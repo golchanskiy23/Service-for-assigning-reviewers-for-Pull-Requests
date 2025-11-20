@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database/postgres"
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 	"context"
 )
 
@@ -20,10 +20,10 @@ type PullRequestRepository interface {
 }
 
 type prPGRepository struct {
-	db *postgres.DatabaseSource
+	db *database.DatabaseSource
 }
 
-func NewPullRequestPGRepository(db *postgres.DatabaseSource) PullRequestRepository {
+func NewPullRequestPGRepository(db *database.DatabaseSource) PullRequestRepository {
 	return &prPGRepository{db: db}
 }
 

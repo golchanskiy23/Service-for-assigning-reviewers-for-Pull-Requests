@@ -1,6 +1,8 @@
 package postgres
 
-import "Service-for-assigning-reviewers-for-Pull-Requests/pkg/database/postgres"
+import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
+)
 
 type Repository struct {
 	Teams        TeamRepository
@@ -8,7 +10,7 @@ type Repository struct {
 	PullRequests PullRequestRepository
 }
 
-func NewRepository(db *postgres.DatabaseSource) *Repository {
+func CreateNewDBRepository(db *database.DatabaseSource) *Repository {
 	return &Repository{
 		Teams:        NewTeamPGRepository(db),
 		Users:        NewUserPGRepository(db),

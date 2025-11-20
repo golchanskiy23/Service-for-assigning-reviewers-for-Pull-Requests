@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database/postgres"
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 	"context"
 )
 
@@ -16,19 +16,28 @@ type TeamRepository interface {
 }
 
 type teamPGRepository struct {
-	db *postgres.DatabaseSource
+	db *database.DatabaseSource
 }
 
-func NewTeamPGRepository(db *postgres.DatabaseSource) TeamRepository {
+func NewTeamPGRepository(db *database.DatabaseSource) TeamRepository {
 	return &teamPGRepository{db: db}
 }
 
-func (repo *teamPGRepository) Add(ctx context.Context, team *Team) error {
-	return nil
+func (r *teamPGRepository) Add(ctx context.Context, team *Team) error {
+	_, err := r.db.Pool.Exec(ctx,
+		`INSERT INTO teams (name) VALUES ($1)`, team.Name)
+	return err
 }
 
-func (repo *teamPGRepository) Get(ctx context.Context, id int) (*Team, error) {
-	return nil, nil
+func (r *teamPGRepository) Get(ctx context.Context, id int) (*Team, error) {
+	team := &Team{}
+	err := r.db.Pool.QueryRow(ctx,
+		`SELECT id, name FROM teams WHERE id=$1`, id).
+		Scan(&team.ID, &team.Name)
+	if err != nil {
+		return nil, err
+	}
+	return team, nil
 }
 
 /*func (r *teamPGRepository) Add(name string, users []entity.User) (*entity.Team, error) {

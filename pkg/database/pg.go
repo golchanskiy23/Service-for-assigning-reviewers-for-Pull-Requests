@@ -1,4 +1,4 @@
-package postgres
+package database
 
 import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
