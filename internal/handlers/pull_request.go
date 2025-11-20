@@ -16,22 +16,18 @@ type PRReassignRequest struct {
 	ReviewerID int `json:"reviewerId"`
 }
 
-type PRHandlers struct {
-	svc PRService
-}
-
 type PRMergeRequest struct {
 	PRID int `json:"prId"`
 }
 
-func (service *PRHandlers) PRCreateHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) PRCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	pr, err := service.CreatePR(req.Title, req.Author)
+	pr, err := service.PrService.CreatePR(req.Title, req.Author)
 	if err != nil {
 		util.RespondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -40,14 +36,14 @@ func (service *PRHandlers) PRCreateHandler(w http.ResponseWriter, r *http.Reques
 	util.RespondJSON(w, http.StatusCreated, pr)
 }
 
-func (service *PRHandlers) PRMergeHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) PRMergeHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRMergeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	pr, err := service.MergePR(req.PRID)
+	pr, err := service.PrService.MergePR(req.PRID)
 	if err != nil {
 		util.RespondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -56,14 +52,14 @@ func (service *PRHandlers) PRMergeHandler(w http.ResponseWriter, r *http.Request
 	util.RespondJSON(w, http.StatusOK, pr)
 }
 
-func (service *PRHandlers) PRReassignHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) PRReassignHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRReassignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	pr, err := service.ReassignReviewer(req.PRID, req.ReviewerID)
+	pr, err := service.PrService.ReassignReviewer(req.PRID, req.ReviewerID)
 	if err != nil {
 		util.RespondError(w, http.StatusBadRequest, err.Error())
 		return

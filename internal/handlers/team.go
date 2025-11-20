@@ -10,11 +10,7 @@ type TeamAddRequest struct {
 	Name string `json:"name"`
 }
 
-type TeamHandlers struct {
-	svc TeamService
-}
-
-func (service *TeamHandlers) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
 	var req TeamAddRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
@@ -25,7 +21,7 @@ func (service *TeamHandlers) TeamAddHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	team, err := service.AddTeam(req.Name)
+	team, err := service.TeamService.AddTeam(req.Name)
 	if err != nil {
 		util.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -34,14 +30,14 @@ func (service *TeamHandlers) TeamAddHandler(w http.ResponseWriter, r *http.Reque
 	util.RespondJSON(w, http.StatusCreated, team)
 }
 
-func (service *TeamHandlers) TeamGetHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) TeamGetHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if name == "" {
 		util.RespondError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	team, err := service.GetTeam(name)
+	team, err := service.TeamService.GetTeam(name)
 	if err != nil {
 		util.RespondError(w, http.StatusNotFound, err.Error())
 		return

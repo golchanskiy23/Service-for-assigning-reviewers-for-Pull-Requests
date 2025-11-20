@@ -11,18 +11,14 @@ type UserSetIsActiveRequest struct {
 	IsActive bool `json:"isActive"`
 }
 
-type UserHandlers struct {
-	//svc UserService
-}
-
-func (service *UserHandlers) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
 	var req UserSetIsActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	err := service.SetUserActive(req.UserID, req.IsActive)
+	err := service.UserService.SetUserActive(req.UserID, req.IsActive)
 	if err != nil {
 		util.RespondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -31,14 +27,14 @@ func (service *UserHandlers) UserSetIsActiveHandler(w http.ResponseWriter, r *ht
 	util.RespondJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-func (service *UserHandlers) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
+func (service *ServiceExecution) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("userId")
 	if userIDStr == "" {
 		util.RespondError(w, http.StatusBadRequest, "userId required")
 		return
 	}
 
-	reviews, err := service.GetPRsAssignedTo(userIDStr)
+	reviews, err := service.UserService.GetPRsAssignedTo(userIDStr)
 	if err != nil {
 		util.RespondError(w, http.StatusInternalServerError, err.Error())
 		return

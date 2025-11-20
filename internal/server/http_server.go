@@ -1,6 +1,8 @@
 package server
 
 import (
+	handlers "Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/service"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
@@ -12,8 +14,13 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer(addr string) *HTTPServer {
+	execution := &handlers.ServiceExecution{
+		TeamService: &service.TeamService{},
+		UserService: &service.UserService{},
+		PrService:   &service.PRService{},
+	}
 	r := chi.NewRouter()
-	RegisterRoutes(r)
+	RegisterRoutes(execution, r)
 	return &HTTPServer{
 		addr: addr,
 		r:    r,
