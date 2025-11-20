@@ -26,9 +26,10 @@ func NewHTTPServer(addr string) *HTTPServer {
 	}
 }*/
 
-func (s *HTTPServer) Run() {
-	log.Println("Starting server on", s.addr)
-	if err := http.ListenAndServe(s.addr, s.r); err != nil {
+func StartServer(srv *http.Server) error {
+	//log.Println("Starting server on", s.addr)
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
+	return nil
 }

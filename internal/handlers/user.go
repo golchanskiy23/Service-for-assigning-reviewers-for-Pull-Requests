@@ -1,12 +1,17 @@
 package handlers
 
+import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/util"
+	"encoding/json"
+	"net/http"
+)
+
 type UserSetIsActiveRequest struct {
 	UserID   int  `json:"userId"`
 	IsActive bool `json:"isActive"`
 }
 
-/*
-func (service *ServiceExecution) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
+func (service *Services) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
 	var req UserSetIsActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
@@ -22,7 +27,7 @@ func (service *ServiceExecution) UserSetIsActiveHandler(w http.ResponseWriter, r
 	util.RespondJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-func (service *ServiceExecution) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
+func (service *Services) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("userId")
 	if userIDStr == "" {
 		util.RespondError(w, http.StatusBadRequest, "userId required")
@@ -37,4 +42,3 @@ func (service *ServiceExecution) UserGetReviewHandler(w http.ResponseWriter, r *
 
 	util.RespondJSON(w, http.StatusOK, reviews)
 }
-*/
