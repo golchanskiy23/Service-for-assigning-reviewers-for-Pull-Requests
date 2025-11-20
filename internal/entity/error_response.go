@@ -12,10 +12,10 @@ type ErrorDetail struct {
 type ErrorCode string
 
 const (
-	CodeTeamExists  ErrorCode = "TEAM_EXISTS"
-	CodePRExists    ErrorCode = "PR_EXISTS"
-	CodePRMerged    ErrorCode = "PR_MERGED"
-	CodeNotAssigned ErrorCode = "NOT_ASSIGNED"
-	CodeNoCandidate ErrorCode = "NO_CANDIDATE"
-	CodeNotFound    ErrorCode = "NOT_FOUND"
+	CodeTeamExists  ErrorCode = "TEAM_EXISTS"  // team
+	CodePRExists    ErrorCode = "PR_EXISTS"    // pr
+	CodePRMerged    ErrorCode = "PR_MERGED"    // pr
+	CodeNotAssigned ErrorCode = "NOT_ASSIGNED" // pr
+	CodeNoCandidate ErrorCode = "NO_CANDIDATE" // pr
+	CodeNotFound    ErrorCode = "NOT_FOUND"    // all
 )

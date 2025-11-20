@@ -1,45 +1,56 @@
 package handlers
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
+	"Service-for-assigning-reviewers-for-Pull-Requests/util"
+	"encoding/json"
 	"net/http"
 )
 
 type TeamAddRequest struct {
-	Name string `json:"name"`
+	Team entity.Team `json:"team"`
+}
+
+type UserGetReviewRequest struct {
+	Query entity.TeamNameQuery `json:"query"`
 }
 
 func (service *Services) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
-	/*var req TeamAddRequest
+	var req TeamAddRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		util.RespondError(w, http.StatusBadRequest, "invalid json")
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
 	}
-	if req.Name == "" {
-		util.RespondError(w, http.StatusBadRequest, "team name is required")
+	if req.Team.TeamName == "" {
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "team name is required")
 		return
 	}
 
-	team, err := service.TeamService.AddTeam(req.Name)
+	team, err := service.TeamService.AddTeam(req)
 	if err != nil {
-		util.RespondError(w, http.StatusInternalServerError, err.Error())
+		util.SendError(w, http.StatusBadRequest, entity.CodeTeamExists, "team_name already exists")
 		return
 	}
 
-	util.RespondJSON(w, http.StatusCreated, team)*/
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(team)
 }
 
 func (service *Services) TeamGetHandler(w http.ResponseWriter, r *http.Request) {
-	/*name := r.URL.Query().Get("name")
+	name := r.URL.Query().Get("team_name")
 	if name == "" {
-		util.RespondError(w, http.StatusBadRequest, "name is required")
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "team_not_found")
 		return
 	}
 
 	team, err := service.TeamService.GetTeam(name)
 	if err != nil {
-		util.RespondError(w, http.StatusNotFound, err.Error())
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "team_not_found")
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, team)*/
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(team)
 }

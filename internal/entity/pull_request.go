@@ -2,13 +2,27 @@ package entity
 
 import "time"
 
-type PullRequest struct {
-	ID        string     `db:"pull_request_id"`
-	Name      string     `db:"pull_request_name"`
-	AuthorID  string     `db:"author_id"`
-	Status    string     `db:"status"`
-	CreatedAt time.Time  `db:"created_at"`
-	MergedAt  *time.Time `db:"merged_at"`
+const (
+	OPEN   PRStatus = "OPEN"
+	MERGED PRStatus = "MERGED"
+)
 
-	Reviewers []string
+type PRStatus string
+
+type PullRequest struct {
+	PullRequestID   string   `json:"pull_request_id"`
+	PullRequestName string   `json:"pull_request_name"`
+	AuthorID        string   `json:"author_id"`
+	Status          PRStatus `json:"status"`
+	// description: user_id назначенных ревьюверов (0..2)
+	AssignedReviewers []string   `json:"assigned_reviewers"`
+	CreatedAt         *time.Time `json:"created_at"`
+	MergedAt          *time.Time `json:"merged_at"`
+}
+
+type PullRequestShort struct {
+	PullRequestID   string   `json:"pull_request_id"`
+	PullRequestName string   `json:"pull_request_name"`
+	AuthorID        string   `json:"author_id"`
+	Status          PRStatus `json:"status"`
 }

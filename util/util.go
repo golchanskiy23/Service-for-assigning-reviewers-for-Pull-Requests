@@ -1,18 +1,19 @@
 package util
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"encoding/json"
 	"net/http"
 )
 
-func RespondJSON(w http.ResponseWriter, status int, data interface{}) {
+func SendError(w http.ResponseWriter, status int, code entity.ErrorCode, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if data != nil {
-		_ = json.NewEncoder(w).Encode(data)
+	resp := entity.ErrorResponse{
+		Error: entity.ErrorDetail{
+			Code:    code,
+			Message: message,
+		},
 	}
-}
-
-func RespondError(w http.ResponseWriter, status int, message string) {
-	RespondJSON(w, status, map[string]string{"error": message})
+	json.NewEncoder(w).Encode(resp)
 }

@@ -1,42 +1,56 @@
 package handlers
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
+	"Service-for-assigning-reviewers-for-Pull-Requests/util"
+	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type UserSetIsActiveRequest struct {
-	UserID   int  `json:"userId"`
-	IsActive bool `json:"isActive"`
+	UserID   string `json:"user_id"`
+	IsActive bool   `json:"is_active"`
+}
+
+type UserGetReviewResponse struct {
+	UserID       string                    `json:"user_id"`
+	PullRequests []entity.PullRequestShort `json:"pull_requests"`
 }
 
 func (service *Services) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
-	/*var req UserSetIsActiveRequest
+	var req UserSetIsActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		util.RespondError(w, http.StatusBadRequest, "invalid json")
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
 		return
 	}
 
-	err := service.UserService.SetUserActive(req.UserID, req.IsActive)
+	user, err := service.UserService.ChangeActivateStatus(req.UserID, req.IsActive)
 	if err != nil {
-		util.RespondError(w, http.StatusBadRequest, err.Error())
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, map[string]string{"status": "updated"})*/
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
 }
 
 func (service *Services) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
-	/*userIDStr := r.URL.Query().Get("userId")
-	if userIDStr == "" {
-		util.RespondError(w, http.StatusBadRequest, "userId required")
-		return
-	}
-
-	reviews, err := service.UserService.GetPRsAssignedTo(userIDStr)
+	userIDStr, err := strconv.Atoi(r.URL.Query().Get("user_id"))
 	if err != nil {
-		util.RespondError(w, http.StatusInternalServerError, err.Error())
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "empty param")
 		return
 	}
+	// string, []pull_request(pull_request_short)
+	id, arr := service.UserService.GetPRsAssignedTo(userIDStr)
 
-	util.RespondJSON(w, http.StatusOK, reviews)*/
+	resp := UserGetReviewResponse{
+		UserID:       id,
+		PullRequests: transform(arr),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
 }
