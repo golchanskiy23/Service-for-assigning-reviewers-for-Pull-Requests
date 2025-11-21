@@ -3,6 +3,7 @@ package app
 import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database/postgres"
+	"context"
 	"fmt"
 )
 
@@ -26,6 +27,20 @@ func InitDB(db *postgres.DatabaseSource, path string) error {
 	return nil
 }*/
 
+func initPostgres(cfg *config.Config) (*postgres.DatabaseSource, error) {
+	db, err := postgres.NewStorage(
+		postgres.GetConnection(&cfg.Database),
+		postgres.SetMaxPoolSize(cfg.Database.MaxPoolSize),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init postgres: %w", err)
+	}
+	if err = db.Pool.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("ping error: %w", err)
+	}
+	return db, nil
+}
+
 func Run(cfg *config.Config) error {
 	db, err := initPostgres(cfg)
 	if err != nil {
@@ -34,12 +49,12 @@ func Run(cfg *config.Config) error {
 	defer func(db *postgres.DatabaseSource) {
 		db.Close()
 	}(db)
-	
-	pgRepository := initDBRepository(db)
+
+	/*pgRepository := initDBRepository(db)
 	service := CreateNewOrderService(pgRepository)
 	orderController := controller.CreateNewOrderController(orderService)
 	if err = startServer(cfg, orderController); err != nil {
 		return fmt.Errorf("start server error: %v", err)
-	}
+	}*/
 	return nil
 }

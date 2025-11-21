@@ -6,7 +6,7 @@ import (
 )
 
 func SystemVarsInit() error {
-	if err := godotenv.Load(".env.example"); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		return fmt.Errorf("error loading .env file: %v", err)
 	}
 	return nil

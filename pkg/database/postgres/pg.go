@@ -27,28 +27,15 @@ const (
 )
 
 func GetConnection(cfg *config.DB) string {
-	var dsn string
-	if os.Getenv("MY_MODE") == "local" {
-		dsn = fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
-			"postgres",
-			os.Getenv("POSTGRES_UNSAFE_USERNAME"),
-			os.Getenv("POSTGRES_UNSAFE_PASSWORD"),
-			os.Getenv("DB_HOST"),
-			cfg.Port,
-			cfg.Name,
-			cfg.SSLMode,
-		)
-	} else {
-		dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-			os.Getenv("DB_HOST"),
-			cfg.Port,
-			os.Getenv("POSTGRES_UNSAFE_USERNAME"),
-			os.Getenv("POSTGRES_UNSAFE_PASSWORD"),
-			cfg.Name,
-			cfg.SSLMode,
-		)
-	}
-	return dsn
+	return fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
+		"postgres",
+		os.Getenv("POSTGRES_UNSAFE_USERNAME"),
+		os.Getenv("POSTGRES_UNSAFE_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		cfg.Port,
+		cfg.Name,
+		cfg.SSLMode,
+	)
 }
 
 func (s *DatabaseSource) Close() {
