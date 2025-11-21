@@ -1,23 +1,23 @@
 version: "3.9"
 
 services:
-  db:
+  database:
     image: postgres:16
     container_name: my_postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_UNSAFE_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_UNSAFE_PASSWORD}
       POSTGRES_DB: prdb
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init:/docker-entrypoint-initdb.d/init.sql:ro
       - db_data:/var/lib/postgresql/data
     networks:
     - back-end
 
 volumes:
-  db_data:
+ db_data:
 
 networks:
   back-end:

@@ -25,3 +25,7 @@ CREATE TABLE pr_reviewers (
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (pull_request_id, reviewer_id)
 );
+
+CREATE ROLE myuser WITH LOGIN PASSWORD 'mypassword';
+CREATE DATABASE prdb;
+GRANT ALL PRIVILEGES ON DATABASE prdb TO myuser;
