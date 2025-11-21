@@ -1,15 +1,10 @@
 package handlers
 
-import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/util"
-	"encoding/json"
-	"net/http"
-)
-
 type TeamAddRequest struct {
 	Name string `json:"name"`
 }
 
+/*
 func (service *ServiceExecution) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
 	var req TeamAddRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -45,3 +40,4 @@ func (service *ServiceExecution) TeamGetHandler(w http.ResponseWriter, r *http.R
 
 	util.RespondJSON(w, http.StatusOK, team)
 }
+*/
