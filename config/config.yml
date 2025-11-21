@@ -4,7 +4,7 @@ app:
 
 database:
   Name : "prdb"
-  Port : 5432
+  Port : 5433
   SSLMode : "disable"
   Schema : "public"
   MaxPoolSize : 10

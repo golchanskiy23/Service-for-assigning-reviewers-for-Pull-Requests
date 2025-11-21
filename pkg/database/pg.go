@@ -1,4 +1,4 @@
-package postgres
+package database
 
 import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
@@ -31,7 +31,7 @@ func GetConnection(cfg *config.DB) string {
 		"postgres",
 		os.Getenv("POSTGRES_UNSAFE_USERNAME"),
 		os.Getenv("POSTGRES_UNSAFE_PASSWORD"),
-		os.Getenv("DB_HOST"),
+		"localhost",
 		cfg.Port,
 		cfg.Name,
 		cfg.SSLMode,

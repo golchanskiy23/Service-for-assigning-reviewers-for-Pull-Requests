@@ -2,7 +2,8 @@ package app
 
 import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database/postgres"
+	postgres "Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 	"context"
 	"fmt"
 )
@@ -27,10 +28,10 @@ func InitDB(db *postgres.DatabaseSource, path string) error {
 	return nil
 }*/
 
-func initPostgres(cfg *config.Config) (*postgres.DatabaseSource, error) {
-	db, err := postgres.NewStorage(
-		postgres.GetConnection(&cfg.Database),
-		postgres.SetMaxPoolSize(cfg.Database.MaxPoolSize),
+func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
+	db, err := database.NewStorage(
+		database.GetConnection(&cfg.Database),
+		database.SetMaxPoolSize(cfg.Database.MaxPoolSize),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init postgres: %w", err)
@@ -41,20 +42,24 @@ func initPostgres(cfg *config.Config) (*postgres.DatabaseSource, error) {
 	return db, nil
 }
 
+func initDBRepository(db *database.DatabaseSource) *postgres.Repository {
+	return postgres.CreateNewDBRepository(db)
+}
+
 func Run(cfg *config.Config) error {
 	db, err := initPostgres(cfg)
 	if err != nil {
 		return err
 	}
-	defer func(db *postgres.DatabaseSource) {
+	defer func(db *database.DatabaseSource) {
 		db.Close()
 	}(db)
 
-	/*pgRepository := initDBRepository(db)
+	pgRepository := initDBRepository(db)
 	service := CreateNewOrderService(pgRepository)
 	orderController := controller.CreateNewOrderController(orderService)
 	if err = startServer(cfg, orderController); err != nil {
 		return fmt.Errorf("start server error: %v", err)
-	}*/
+	}
 	return nil
 }

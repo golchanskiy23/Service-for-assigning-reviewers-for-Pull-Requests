@@ -1,4 +1,4 @@
-package postgres
+package database
 
 type Option func(source *DatabaseSource)
 
