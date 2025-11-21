@@ -1,12 +1,14 @@
 package service
 
+import "Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+
 type PRService struct {
-	repo     PRRepository
-	userRepo UserRepository
-	teamRepo TeamRepository
+	repo     postgres.PullRequestRepository
+	userRepo postgres.UserRepository
+	teamRepo postgres.TeamRepository
 }
 
-func NewPRService(r PRRepository, u UserRepository, t TeamRepository) *PRService {
+func NewPRService(r postgres.PullRequestRepository, u postgres.UserRepository, t postgres.TeamRepository) *PRService {
 	return &PRService{
 		repo:     r,
 		userRepo: u,

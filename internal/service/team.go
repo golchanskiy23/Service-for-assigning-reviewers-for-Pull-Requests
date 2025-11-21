@@ -1,27 +1,22 @@
 package service
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"errors"
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+	"context"
 )
 
 type TeamService struct {
-	repo TeamRepository
+	repo postgres.TeamRepository
 }
 
-func NewTeamService(r TeamRepository) *TeamService {
-	return &TeamService{repo: r}
+func NewTeamService(repo postgres.TeamRepository) *TeamService {
+	return &TeamService{repo: repo}
 }
 
-func (s *TeamService) AddTeam(name string, users []entity.User) (*entity.Team, error) {
-	// доменная валидация
-	if name == "" {
-		return nil, errors.New("team name required")
-	}
-
-	return s.repo.CreateTeam(name, users)
+func (s *TeamService) CreateTeam(ctx context.Context, name string) error {
+	return s.repo.Add(ctx, nil)
 }
 
-func (s *TeamService) GetTeam(name string) (*entity.Team, error) {
-	return s.repo.GetTeam(name)
+func (s *TeamService) Get(ctx context.Context, id int) (*postgres.Team, error) {
+	return s.repo.Get(ctx, id)
 }
