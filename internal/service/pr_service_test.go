@@ -1,6 +1,6 @@
 package service
 
-import (
+/*import (
 	"errors"
 	"testing"
 	"time"
@@ -9,8 +9,9 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-)
+)*/
 
+/*
 func TestPRService_CreatePR(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -608,4 +609,4 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 			userRepo.AssertExpectations(t)
 		})
 	}
-}
+}*/

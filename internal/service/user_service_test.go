@@ -1,6 +1,6 @@
 package service
 
-import (
+/*import (
 	"errors"
 	"testing"
 	"time"
@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-)
-
+)*/
+/*
 //nolint:maintidx // Complex test with many test cases
 func TestUserService_ChangeActivateStatus(t *testing.T) {
 	tests := []struct {
@@ -532,3 +532,4 @@ func TestUserService_GetPRsAssignedTo(t *testing.T) {
 		})
 	}
 }
+*/

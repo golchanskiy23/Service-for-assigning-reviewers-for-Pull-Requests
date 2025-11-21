@@ -4,7 +4,7 @@ app:
 
 database:
   name: "prdb"
-  port: 5433
+  port: 5432
   sslmode: "disable"
   schema: "public"
   maxpoolsize: 7
@@ -15,5 +15,5 @@ database:
 server:
   read_timeout: 500ms
   write_timeout: 400ms
-  shutdown_timeout: 200s
+  shutdown_timeout: 100000s
   addr: "0.0.0.0:8080"

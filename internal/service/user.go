@@ -114,3 +114,65 @@ func (s *UserService) GetPRsAssignedTo(
 
 	return userID, prs, nil
 }
+
+// MassDeactivateUsers deactivates multiple users from the same team and
+// triggers safe reassignment of their open PRs. All users must belong to the same team.
+// MassDeactivate deactivates multiple users (provided as entity.User slice)
+// and triggers safe reassignment for their open PRs. The provided flag must be false
+// (only deactivation supported here).
+func (s *UserService) MassDeactivate(ctx context.Context, users []entity.User, flag bool) error {
+	if flag {
+		return errors.New("ONLY_DEACTIVATE")
+	}
+
+	if len(users) == 0 {
+		return errors.New("EMPTY_REQUEST")
+	}
+
+	// Determine team: prefer TeamName on provided users; if missing, fetch from repo
+	team := users[0].TeamName
+	queryCtx, cancel := context.WithTimeout(ctx, userQueryTimeout)
+	defer cancel()
+
+	if team == "" {
+		u, err := s.repo.GetUser(queryCtx, users[0].UserID)
+		if err != nil {
+			return errors.New("NOT_FOUND")
+		}
+		team = u.TeamName
+	}
+
+	userIDs := make([]string, 0, len(users))
+	for _, u := range users {
+		if u.UserID == "" {
+			return errors.New("INVALID_USER")
+		}
+
+		// If TeamName provided, ensure same; otherwise fetch and validate
+		if u.TeamName != "" {
+			if u.TeamName != team {
+				return errors.New("DIFFERENT_TEAM")
+			}
+		} else {
+			uu, err := s.repo.GetUser(queryCtx, u.UserID)
+			if err != nil {
+				return errors.New("NOT_FOUND")
+			}
+			if uu.TeamName != team {
+				return errors.New("DIFFERENT_TEAM")
+			}
+		}
+
+		userIDs = append(userIDs, u.UserID)
+	}
+
+	// perform mass deactivate + reassign in repository (single transaction)
+	repoCtx, repoCancel := context.WithTimeout(ctx, reassignTimeout)
+	defer repoCancel()
+
+	if err := s.repo.MassDeactivateAndReassign(repoCtx, team, userIDs); err != nil {
+		return err
+	}
+
+	return nil
+}
