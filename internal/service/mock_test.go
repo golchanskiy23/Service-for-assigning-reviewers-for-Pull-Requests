@@ -64,6 +64,11 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
+func (m *MockUserRepository) MassDeactivateAndReassign(ctx context.Context, teamName string, userIDs []string) error {
+	args := m.Called(ctx, teamName, userIDs)
+	return args.Error(0)
+}
+
 func (m *MockUserRepository) GetUser(ctx context.Context, userID string) (*entity.User, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {

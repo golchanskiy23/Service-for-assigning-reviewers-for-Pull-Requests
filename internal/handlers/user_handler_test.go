@@ -19,6 +19,11 @@ type MockUserService struct {
 	mock.Mock
 }
 
+func (m *MockUserService) MassDeactivate(ctx context.Context, users []entity.User, flag bool) error {
+	args := m.Called(ctx, users, flag)
+	return args.Error(0)
+}
+
 func (m *MockUserService) ChangeStatus(
 	ctx context.Context,
 	userID string,
