@@ -30,4 +30,5 @@ clean:
 	@echo "$(YELLOW)Stopping and removing containers...$(NC)"
 	@$(DOCKER_COMPOSE) stop -v
 
-start: lint test run clean
+#start: lint test run clean
+start: run

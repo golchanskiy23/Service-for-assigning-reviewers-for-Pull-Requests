@@ -22,6 +22,22 @@ type UserGetReviewResponse struct {
 	PullRequests []entity.PullRequestShort `json:"pull_requests"`
 }
 
+type bulkUserItem struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	TeamName string `json:"team_name"`
+	IsActive bool   `json:"is_active"`
+}
+
+type BulkUserChangeRequest struct {
+	Users []bulkUserItem `json:"users"`
+	Flag  bool           `json:"flag"`
+}
+
+type BulkUserChangeResponse struct {
+	Deactivated []string `json:"deactivated_user_ids"`
+}
+
 func (s *Services) UserSetIsActiveHandler(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -131,5 +147,74 @@ func (s *Services) UserGetReviewHandler(
 			http.StatusInternalServerError,
 			entity.CodeNotFound,
 			"failed to encode response")
+	}
+}
+
+// UserBulkDeactivateHandler accepts a JSON array of {user_id, is_active:false}
+// All users must belong to the same team; if any item requests is_active==true
+// or users from different teams are provided, handler responds with error.
+func (s *Services) UserBulkDeactivateHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	var req BulkUserChangeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
+		return
+	}
+
+	if len(req.Users) == 0 {
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "empty request")
+		return
+	}
+
+	if req.Flag {
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "only deactivation supported (flag must be false)")
+		return
+	}
+
+	// Map decoded request items to entity.User before calling service
+	users := make([]entity.User, 0, len(req.Users))
+	for _, u := range req.Users {
+		users = append(users, entity.User{
+			UserID:   u.UserID,
+			Username: u.Username,
+			TeamName: u.TeamName,
+			IsActive: u.IsActive,
+		})
+	}
+
+	ctx := r.Context()
+	if err := s.UserService.MassDeactivate(ctx, users, req.Flag); err != nil {
+		switch err.Error() {
+		case "NOT_FOUND":
+			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
+			return
+		case "DIFFERENT_TEAM":
+			util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "users belong to different teams")
+			return
+		case "EMPTY_REQUEST":
+			util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "empty request")
+			return
+		case "ONLY_DEACTIVATE":
+			util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "only deactivation supported")
+			return
+		default:
+			util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
+			return
+		}
+	}
+
+	// Build deactivated ids list from request
+	userIDs := make([]string, 0, len(req.Users))
+	for _, u := range req.Users {
+		userIDs = append(userIDs, u.UserID)
+	}
+
+	resp := BulkUserChangeResponse{Deactivated: userIDs}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, "failed to encode response")
 	}
 }

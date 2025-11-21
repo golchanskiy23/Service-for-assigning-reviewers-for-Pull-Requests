@@ -43,6 +43,7 @@ type UserServiceInterface interface {
 		[]*entity.PullRequestShort,
 		error,
 	)
+	MassDeactivate(ctx context.Context, users []entity.User, flag bool) error
 }
 
 type TeamServiceInterface interface {

@@ -18,6 +18,10 @@ type UserRepository interface {
 	) ([]*entity.User, error)
 	//nolint:revive // func
 	GetPRsForReviewer(ctx context.Context, userID string) ([]*entity.PullRequestShort, error)
+	// MassDeactivateAndReassign deactivates given users (must belong to the same team)
+	// and for every OPEN PR where they are reviewers removes them and tries
+	// to reassign at least one active reviewer from the same team.
+	MassDeactivateAndReassign(ctx context.Context, teamName string, userIDs []string) error
 }
 
 type userPGRepository struct {
@@ -147,4 +151,91 @@ func (r *userPGRepository) GetPRsForReviewer(
 	}
 
 	return prs, nil
+}
+
+// MassDeactivateAndReassign implements bulk deactivation and safe reassignment.
+func (r *userPGRepository) MassDeactivateAndReassign(
+	ctx context.Context,
+	teamName string,
+	userIDs []string,
+) error {
+	tx, err := r.db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	//nolint:errcheck // best-effort
+	defer tx.Rollback(ctx)
+
+	// Deactivate provided users (scoped to team for safety)
+	if _, err := tx.Exec(ctx,
+		`UPDATE users SET is_active = FALSE WHERE user_id = ANY($1::text[]) AND team_name = $2`,
+		userIDs, teamName); err != nil {
+		return err
+	}
+
+	// Find affected OPEN PRs that had any of these users as reviewers and get current reviewer list
+	rows, err := tx.Query(ctx,
+		`SELECT pr.pull_request_id, array_agg(prr.reviewer_id ORDER BY prr.assigned_at)
+		 FROM pr_reviewers prr
+		 JOIN pull_requests pr ON pr.pull_request_id = prr.pull_request_id
+		 WHERE pr.status = 'OPEN' AND prr.reviewer_id = ANY($1::text[])
+		 GROUP BY pr.pull_request_id`,
+		userIDs,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var prID string
+		var reviewers []string
+		if err := rows.Scan(&prID, &reviewers); err != nil {
+			return err
+		}
+
+		// Build remaining reviewers by excluding deactivated ones
+		remaining := make([]string, 0, len(reviewers))
+		for _, rID := range reviewers {
+			skip := false
+			for _, d := range userIDs {
+				if rID == d {
+					skip = true
+					break
+				}
+			}
+			if !skip {
+				remaining = append(remaining, rID)
+			}
+		}
+
+		// Delete entries for deactivated users for this PR
+		if _, err := tx.Exec(ctx,
+			`DELETE FROM pr_reviewers WHERE pull_request_id = $1 AND reviewer_id = ANY($2::text[])`,
+			prID, userIDs); err != nil {
+			return err
+		}
+
+		// If no remaining reviewers, try to add one active team member
+		if len(remaining) == 0 {
+			// find one active candidate in the same team (exclude deactivated list)
+			var candidate string
+			err := tx.QueryRow(ctx,
+				`SELECT user_id FROM users
+				 WHERE team_name = $1 AND is_active = TRUE AND NOT (user_id = ANY($2::text[]))
+				 LIMIT 1`,
+				teamName, userIDs).Scan(&candidate)
+
+			if err == nil && candidate != "" {
+				if _, err := tx.Exec(ctx,
+					`INSERT INTO pr_reviewers (pull_request_id, reviewer_id) VALUES ($1, $2)`,
+					prID, candidate); err != nil {
+					return err
+				}
+			}
+			// if no candidate found, leave PR without reviewers — caller may handle this
+		}
+	}
+
+	return tx.Commit(ctx)
 }
