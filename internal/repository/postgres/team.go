@@ -1,18 +1,16 @@
 package postgres
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 	"context"
+	"errors"
 )
 
-type Team struct {
-	ID   int
-	Name string
-}
-
 type TeamRepository interface {
-	Add(ctx context.Context, team *Team) error
-	Get(ctx context.Context, id int) (*Team, error)
+	AddTeam(ctx context.Context, team *entity.Team) error
+	GetTeam(ctx context.Context, teamName string) (*entity.Team, error)
+	TeamExists(ctx context.Context, teamName string) (bool, error)
 }
 
 type teamPGRepository struct {
@@ -23,67 +21,84 @@ func NewTeamPGRepository(db *database.DatabaseSource) TeamRepository {
 	return &teamPGRepository{db: db}
 }
 
-func (r *teamPGRepository) Add(ctx context.Context, team *Team) error {
-	_, err := r.db.Pool.Exec(ctx,
-		`INSERT INTO teams (name) VALUES ($1)`, team.Name)
-	return err
-}
-
-func (r *teamPGRepository) Get(ctx context.Context, id int) (*Team, error) {
-	team := &Team{}
-	err := r.db.Pool.QueryRow(ctx,
-		`SELECT id, name FROM teams WHERE id=$1`, id).
-		Scan(&team.ID, &team.Name)
+func (r *teamPGRepository) AddTeam(ctx context.Context, team *entity.Team) error {
+	tx, err := r.db.Pool.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return team, nil
-}
+	defer tx.Rollback(ctx)
 
-/*func (r *teamPGRepository) Add(name string, users []entity.User) (*entity.Team, error) {
-	/*tx, err := r.db.Begin()
+	var exists bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM teams WHERE team_name = $1)`, team.TeamName).Scan(&exists)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`INSERT INTO teams (team_name) VALUES ($1)`, name)
-	if err != nil {
-		return nil, err
+	if exists {
+		return errors.New("TEAM_EXISTS")
 	}
 
-	for _, u := range users {
-		_, err = tx.Exec(`
-            INSERT INTO users (user_id, username, team_name, is_active)
-            VALUES ($1, $2, $3, TRUE)`,
-			u.ID, u.Username, name,
-		)
+	_, err = tx.Exec(ctx, `INSERT INTO teams (team_name) VALUES ($1)`, team.TeamName)
+	if err != nil {
+		return err
+	}
+
+	for _, member := range team.Members {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO users (user_id, username, team_name, is_active)
+			 VALUES ($1, $2, $3, $4)
+			 ON CONFLICT (user_id) DO UPDATE SET
+			 username = EXCLUDED.username,
+			 team_name = EXCLUDED.team_name,
+			 is_active = EXCLUDED.is_active`,
+			member.UserID, member.Username, team.TeamName, member.IsActive)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &entity.Team{
-		Name: name,
-	}, nil
-	return nil, nil
+	return tx.Commit(ctx)
 }
 
-func (r *teamPGRepository) Get(name string) (*entity.Team, error) {
-	/*t := entity.Team{}
-	err := r.db.QueryRow(`
-        SELECT team_name, created_at
-        FROM teams
-        WHERE team_name = $1`,
-		name,
-	).Scan(&t.Name, &t.CreatedAt)
-
+func (r *teamPGRepository) GetTeam(ctx context.Context, teamName string) (*entity.Team, error) {
+	var exists bool
+	err := r.db.Pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM teams WHERE team_name = $1)`, teamName).Scan(&exists)
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
-}*/
+	if !exists {
+		return nil, errors.New("NOT_FOUND")
+	}
+
+	rows, err := r.db.Pool.Query(ctx,
+		`SELECT user_id, username, is_active
+		 FROM users
+		 WHERE team_name = $1
+		 ORDER BY user_id`,
+		teamName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	members := []entity.TeamMember{}
+	for rows.Next() {
+		var member entity.TeamMember
+		if err := rows.Scan(&member.UserID, &member.Username, &member.IsActive); err != nil {
+			return nil, err
+		}
+		members = append(members, member)
+	}
+
+	return &entity.Team{
+		TeamName: teamName,
+		Members:  members,
+	}, nil
+}
+
+func (r *teamPGRepository) TeamExists(ctx context.Context, teamName string) (bool, error) {
+	var exists bool
+	err := r.db.Pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM teams WHERE team_name = $1)`, teamName).Scan(&exists)
+	return exists, err
+}

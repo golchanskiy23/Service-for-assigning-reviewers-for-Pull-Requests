@@ -1,22 +1,20 @@
 package postgres
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 	"context"
+	"errors"
 )
 
-type PullRequest struct {
-	ID         int
-	Title      string
-	AuthorID   int
-	ReviewerID int
-	Status     string
-}
-
 type PullRequestRepository interface {
-	Create(ctx context.Context, pr *PullRequest) error
-	Merge(ctx context.Context, prID int) error
-	Reassign(ctx context.Context, prID int, newReviewerID int) error
+	CreatePR(ctx context.Context, pr *entity.PullRequest, reviewerIDs []string) error
+	GetPR(ctx context.Context, prID string) (*entity.PullRequest, error)
+	PRExists(ctx context.Context, prID string) (bool, error)
+	UpdatePR(ctx context.Context, pr *entity.PullRequest) error
+	UpdateReviewers(ctx context.Context, prID string, reviewerIDs []string) error
+	// GetOpenPRsByReviewer получает все открытые PR, где пользователь является ревьювером
+	GetOpenPRsByReviewer(ctx context.Context, reviewerID string) ([]string, error)
 }
 
 type prPGRepository struct {
@@ -27,154 +25,138 @@ func NewPullRequestPGRepository(db *database.DatabaseSource) PullRequestReposito
 	return &prPGRepository{db: db}
 }
 
-func (r *prPGRepository) Create(ctx context.Context, pr *PullRequest) error {
+func (r *prPGRepository) CreatePR(ctx context.Context, pr *entity.PullRequest, reviewerIDs []string) error {
+	tx, err := r.db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var exists bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pull_requests WHERE pull_request_id = $1)`, pr.PullRequestID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.New("PR_EXISTS")
+	}
+
+	_, err = tx.Exec(ctx,
+		`INSERT INTO pull_requests (pull_request_id, pull_request_name, author_id, status)
+		 VALUES ($1, $2, $3, $4)`,
+		pr.PullRequestID, pr.PullRequestName, pr.AuthorID, pr.Status)
+	if err != nil {
+		return err
+	}
+
+	for _, reviewerID := range reviewerIDs {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO pr_reviewers (pull_request_id, reviewer_id)
+			 VALUES ($1, $2)`,
+			pr.PullRequestID, reviewerID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *prPGRepository) GetPR(ctx context.Context, prID string) (*entity.PullRequest, error) {
+	var pr entity.PullRequest
+	err := r.db.Pool.QueryRow(ctx,
+		`SELECT pull_request_id, pull_request_name, author_id, status, created_at, merged_at
+		 FROM pull_requests
+		 WHERE pull_request_id = $1`,
+		prID).Scan(&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status, &pr.CreatedAt, &pr.MergedAt)
+	if err != nil {
+		return nil, errors.New("NOT_FOUND")
+	}
+
+	rows, err := r.db.Pool.Query(ctx,
+		`SELECT reviewer_id
+		 FROM pr_reviewers
+		 WHERE pull_request_id = $1
+		 ORDER BY assigned_at`,
+		prID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	pr.AssignedReviewers = []string{}
+	for rows.Next() {
+		var reviewerID string
+		if err := rows.Scan(&reviewerID); err != nil {
+			return nil, err
+		}
+		pr.AssignedReviewers = append(pr.AssignedReviewers, reviewerID)
+	}
+
+	return &pr, nil
+}
+
+func (r *prPGRepository) PRExists(ctx context.Context, prID string) (bool, error) {
+	var exists bool
+	err := r.db.Pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM pull_requests WHERE pull_request_id = $1)`, prID).Scan(&exists)
+	return exists, err
+}
+
+func (r *prPGRepository) UpdatePR(ctx context.Context, pr *entity.PullRequest) error {
 	_, err := r.db.Pool.Exec(ctx,
-		`INSERT INTO pull_requests (title, author_id, reviewer_id, status)
-         VALUES ($1, $2, $3, $4)`,
-		pr.Title, pr.AuthorID, pr.ReviewerID, pr.Status)
+		`UPDATE pull_requests
+		 SET status = $1,
+		     merged_at = CASE WHEN $1 = 'MERGED' AND merged_at IS NULL THEN now() ELSE merged_at END
+		 WHERE pull_request_id = $2`,
+		pr.Status, pr.PullRequestID)
 	return err
 }
 
-func (r *prPGRepository) Merge(ctx context.Context, prID int) error {
-	_, err := r.db.Pool.Exec(ctx,
-		`UPDATE pull_requests SET status='merged' WHERE id=$1`, prID)
-	return err
-}
+func (r *prPGRepository) UpdateReviewers(ctx context.Context, prID string, reviewerIDs []string) error {
+	tx, err := r.db.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
 
-func (r *prPGRepository) Reassign(ctx context.Context, prID int, newReviewerID int) error {
-	_, err := r.db.Pool.Exec(ctx,
-		`UPDATE pull_requests SET reviewer_id=$1 WHERE id=$2`, newReviewerID, prID)
-	return err
-}
+	_, err = tx.Exec(ctx, `DELETE FROM pr_reviewers WHERE pull_request_id = $1`, prID)
+	if err != nil {
+		return err
+	}
 
-/*func (r *PRRepo) CreatePR(pr *entity.PullRequest) error {
-	tx, err := r.db.Begin()
+	for _, reviewerID := range reviewerIDs {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO pr_reviewers (pull_request_id, reviewer_id)
+			 VALUES ($1, $2)`,
+			prID, reviewerID)
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+	}
 
-		_, err = tx.Exec(`
-	        INSERT INTO pull_requests (pull_request_id, pull_request_name, author_id, status)
-	        VALUES ($1, $2, $3, $4)`,
-			pr.ID, pr.Name, pr.AuthorID, pr.Status,
-		)
-		if err != nil {
-			return err
-		}
-
-		for _, reviewerID := range pr.Reviewers {
-			_, err := tx.Exec(`
-	            INSERT INTO pr_reviewers (pull_request_id, reviewer_id)
-	            VALUES ($1, $2)`,
-				pr.ID, reviewerID,
-			)
-			if err != nil {
-				return err
-			}
-		}
-
-		return tx.Commit()
-	return nil
+	return tx.Commit(ctx)
 }
 
-func (r *PRRepo) GetPR(id string) (*entity.PullRequest, error) {
-	pr := entity.PullRequest{}
+func (r *prPGRepository) GetOpenPRsByReviewer(ctx context.Context, reviewerID string) ([]string, error) {
+	rows, err := r.db.Pool.Query(ctx,
+		`SELECT pr.pull_request_id
+		 FROM pr_reviewers prr
+		 JOIN pull_requests pr ON pr.pull_request_id = prr.pull_request_id
+		 WHERE prr.reviewer_id = $1 AND pr.status = 'OPEN'`,
+		reviewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-		err := r.db.QueryRow(`
-	        SELECT pull_request_id, pull_request_name, author_id,
-	               status, created_at, merged_at
-	        FROM pull_requests
-	        WHERE pull_request_id = $1`,
-			id,
-		).Scan(
-			&pr.ID, &pr.Name, &pr.AuthorID,
-			&pr.Status, &pr.CreatedAt, &pr.MergedAt,
-		)
-		if err != nil {
+	var prIDs []string
+	for rows.Next() {
+		var prID string
+		if err := rows.Scan(&prID); err != nil {
 			return nil, err
 		}
-
-		// Load reviewers
-		rows, err := r.db.Query(`
-	        SELECT reviewer_id
-	        FROM pr_reviewers
-	        WHERE pull_request_id = $1`,
-			id,
-		)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		pr.Reviewers = []string{}
-		for rows.Next() {
-			var reviewer string
-			rows.Scan(&reviewer)
-			pr.Reviewers = append(pr.Reviewers, reviewer)
-		}
-
-	return nil, nil
+		prIDs = append(prIDs, prID)
+	}
+	return prIDs, nil
 }
-
-func (r *PRRepo) UpdatePR(pr *entity.PullRequest) error {
-	/*tx, err := r.db.Begin()
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
-
-		_, err = tx.Exec(`
-	        UPDATE pull_requests
-	        SET status = $1,
-	            merged_at = CASE WHEN $1 = 'MERGED' THEN now() ELSE NULL END
-	        WHERE pull_request_id = $2`,
-			pr.Status, pr.ID,
-		)
-		if err != nil {
-			return err
-		}
-
-		_, err = tx.Exec(`DELETE FROM pr_reviewers WHERE pull_request_id = $1`, pr.ID)
-		if err != nil {
-			return err
-		}
-
-		for _, reviewer := range pr.Reviewers {
-			_, err := tx.Exec(`
-	            INSERT INTO pr_reviewers (pull_request_id, reviewer_id)
-	            VALUES ($1, $2)`,
-				pr.ID, reviewer,
-			)
-			if err != nil {
-				return err
-			}
-		}
-
-	return nil
-}
-
-func (r *PRRepo) GetActiveReviewers(teamName string, exclude []string) ([]entity.User, error) {
-	/*rows, err := r.db.Query(`
-	        SELECT user_id, username, team_name, is_active
-	        FROM users
-	        WHERE team_name = $1
-	          AND is_active = TRUE
-	          AND NOT (user_id = ANY($2))`,
-			teamName, exclude,
-		)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		list := []entity.User{}
-		for rows.Next() {
-			var u entity.User
-			rows.Scan(&u.ID, &u.Username, &u.TeamName, &u.Active)
-			list = append(list, u)
-		}
-
-	return nil, nil
-}
-*/
