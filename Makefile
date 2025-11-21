@@ -10,10 +10,28 @@ GO := go
 GOLANGCI_LINT := golangci-lint
 APP_NAME := Service-for-assigning-reviewers-for-Pull-Requests
 
+docker-up:
+	@echo "$(YELLOW)Starting PostgreSQL container...$(NC)"
+	@$(DOCKER_COMPOSE) up -d --build
+	@echo "$(YELLOW)Waiting for database to be ready...$(NC)"
+	@timeout=30; \
+	username=$$(grep -E '^POSTGRES_UNSAFE_USERNAME=' .env 2>/dev/null | cut -d '=' -f2 || echo "myuser"); \
+	while [ $$timeout -gt 0 ]; do \
+		if $(DOCKER_COMPOSE) exec -T database pg_isready -U $$username -d prdb > /dev/null 2>&1; then \
+			echo "$(GREEN)✓ Successful container execution - PostgreSQL is ready!$(NC)"; \
+			break; \
+		fi; \
+		sleep 1; \
+		timeout=$$((timeout-1)); \
+	done; \
+	if [ $$timeout -eq 0 ]; then \
+		echo "$(RED)✗ Database failed to start within 30 seconds$(NC)"; \
+		exit 1; \
+	fi
 
 lint:
 	@echo "$(YELLOW)Running linters...$(NC)"
-	# @$(GOLANGCI_LINT) run --timeout 5m
+	@$(GOLANGCI_LINT) run --timeout 5m
 	@echo "$(GREEN)✓ Successful linter execution$(NC)"
 
 test:
@@ -30,4 +48,4 @@ clean:
 	@echo "$(YELLOW)Stopping and removing containers...$(NC)"
 	@$(DOCKER_COMPOSE) down -v
 
-start: lint test run clean
+start: docker-up lint test run clean
