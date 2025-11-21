@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
-	"encoding/json"
 	"net/http"
 )
 
@@ -12,7 +10,7 @@ type UserSetIsActiveRequest struct {
 }
 
 func (service *Services) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
-	var req UserSetIsActiveRequest
+	/*var req UserSetIsActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -24,11 +22,11 @@ func (service *Services) UserSetIsActiveHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+	util.RespondJSON(w, http.StatusOK, map[string]string{"status": "updated"})*/
 }
 
 func (service *Services) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.URL.Query().Get("userId")
+	/*userIDStr := r.URL.Query().Get("userId")
 	if userIDStr == "" {
 		util.RespondError(w, http.StatusBadRequest, "userId required")
 		return
@@ -40,5 +38,5 @@ func (service *Services) UserGetReviewHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, reviews)
+	util.RespondJSON(w, http.StatusOK, reviews)*/
 }
