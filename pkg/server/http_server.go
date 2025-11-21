@@ -21,6 +21,7 @@ const (
 	defaultAddr            = "0.0.0.0:3333"
 	defaultShutdownTimeout = 10 * time.Second
 	chanBufferSize         = 1
+	Billion                = 1000000000
 )
 
 type Server struct {
@@ -109,7 +110,8 @@ func StartServer(
 		SetShutdownTimeout(cfg.Server.ShutdownTimeout),
 	)
 	logger.Info("server shutdown info",
-		"shutdownTimeout", customServer.shutdownTimeout,
+		"shutdownTimeout", fmt.Sprintf("%d %s",
+			customServer.shutdownTimeout/Billion, "s"),
 	)
 	logger.Info("")
 	logger.Info("successfully created server\n")
