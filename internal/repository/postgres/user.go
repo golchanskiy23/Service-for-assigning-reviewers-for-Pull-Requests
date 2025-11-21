@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
