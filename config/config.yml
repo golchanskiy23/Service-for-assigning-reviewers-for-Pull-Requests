@@ -1,0 +1,13 @@
+app:
+  Name : "pull request assigning reviewers"
+  AppVersion : "1.0.0"
+
+database:
+  Name : "prdb"
+  Port : 5432
+  SSLMode : "disable"
+  Schema : "public"
+  MaxPoolSize : 10
+
+server:
+  ShutdownTimeout : 20
