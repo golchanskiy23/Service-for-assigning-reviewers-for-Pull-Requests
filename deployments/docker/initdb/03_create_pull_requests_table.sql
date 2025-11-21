@@ -6,3 +6,6 @@ CREATE TABLE pull_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     merged_at TIMESTAMPTZ NULL
 );
+
+CREATE INDEX idx_pr_author ON pull_requests(author_id);
+CREATE INDEX idx_pr_status ON pull_requests(status);
