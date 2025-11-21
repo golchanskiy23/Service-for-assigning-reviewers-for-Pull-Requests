@@ -57,6 +57,10 @@ func NewStorage(url string, options ...Option) (*DatabaseSource, error) {
 		return nil, fmt.Errorf("creation db storage error: %w", err)
 	}
 	cfg.MaxConns = int32(src.MaxPoolSize)
+	cfg.MaxConnLifetime = src.MaxConnLifetime
+	cfg.HealthCheckPeriod = 30 * time.Second
+	cfg.MaxConnIdleTime = 5 * time.Minute
+
 	ctx := context.Background()
 	for attempt := 0; attempt < src.MaxConnectAttempts; attempt++ {
 		select {

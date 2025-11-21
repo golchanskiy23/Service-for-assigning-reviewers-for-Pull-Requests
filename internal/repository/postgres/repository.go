@@ -1,8 +1,6 @@
 package postgres
 
-import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
-)
+import "Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 
 type Repository struct {
 	Teams        TeamRepository
