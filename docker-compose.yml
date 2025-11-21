@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_UNSAFE_PASSWORD}
       POSTGRES_DB: prdb
     volumes:
-      - ./init:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./deployments/docker/initdb:/docker-entrypoint-initdb.d:ro
       - db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_UNSAFE_USERNAME} -d prdb"]
