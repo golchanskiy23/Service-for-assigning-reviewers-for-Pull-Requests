@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -18,11 +19,14 @@ type App struct {
 }
 
 type DB struct {
-	Name        string `mapstructure:"name"`
-	Port        int    `mapstructure:"port"`
-	SSLMode     Mode   `mapstructure:"sslmode"`
-	Schema      string `mapstructure:"schema"`
-	MaxPoolSize int    `mapstructure:"maxpoolsize"`
+	Name              string         `mapstructure:"name"`
+	Port              int            `mapstructure:"port"`
+	SSLMode           Mode           `mapstructure:"sslmode"`
+	Schema            string         `mapstructure:"schema"`
+	MaxPoolSize       int            `mapstructure:"maxpoolsize"`
+	MaxConnLifetime   *time.Duration `mapstructure:"max_conn_lifetime"`
+	MaxConnectTimeout *time.Duration `mapstructure:"max_connect_timeout"`
+	QueryTimeout      *time.Duration `mapstructure:"query_timeout"`
 }
 
 type HttpServer struct {
@@ -50,3 +54,4 @@ func NewConfig() (*Config, error) {
 	}
 	return cfg, nil
 }
+

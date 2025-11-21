@@ -7,10 +7,13 @@ database:
   port: 5433
   sslmode: "disable"
   schema: "public"
-  maxpoolsize: 10
+  maxpoolsize: 7
+  max_conn_lifetime: 300s
+  max_connect_timeout: 500ms
+  query_timeout: 250ms
 
 server:
-  read_timeout: 5s
-  write_timeout: 5s
-  shutdown_timeout: 600000s
+  read_timeout: 500ms
+  write_timeout: 400ms
+  shutdown_timeout: 10
   addr: "0.0.0.0:8080"
