@@ -1,23 +1,25 @@
 package util
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 func TestSendError(t *testing.T) {
 	tests := []struct {
 		name           string
-		status         int
 		code           entity.ErrorCode
 		message        string
-		expectedStatus int
 		expectedCode   entity.ErrorCode
 		expectedMsg    string
+		status         int
+		expectedStatus int
 	}{
 		{
 			name:           "send NOT_FOUND error",
@@ -103,9 +105,7 @@ func TestSendError(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			w := httptest.NewRecorder()
 
 			SendError(w, tt.status, tt.code, tt.message)

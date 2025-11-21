@@ -1,9 +1,11 @@
 package service
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"context"
+
 	"github.com/stretchr/testify/mock"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 type MockPullRequestRepository struct {
@@ -20,7 +22,13 @@ func (m *MockPullRequestRepository) GetPR(ctx context.Context, prID string) (*en
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.PullRequest), args.Error(1)
+
+	pr, ok := args.Get(0).(*entity.PullRequest)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return pr, args.Error(1)
 }
 
 func (m *MockPullRequestRepository) PRExists(ctx context.Context, prID string) (bool, error) {
@@ -43,7 +51,13 @@ func (m *MockPullRequestRepository) GetOpenPRsByReviewer(ctx context.Context, re
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+
+	pr, ok := args.Get(0).([]string)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return pr, args.Error(1)
 }
 
 type MockUserRepository struct {
@@ -55,7 +69,13 @@ func (m *MockUserRepository) GetUser(ctx context.Context, userID string) (*entit
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.User), args.Error(1)
+
+	pr, ok := args.Get(0).(*entity.User)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return pr, args.Error(1)
 }
 
 func (m *MockUserRepository) SetIsActive(ctx context.Context, userID string, active bool) error {
@@ -63,12 +83,22 @@ func (m *MockUserRepository) SetIsActive(ctx context.Context, userID string, act
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) GetActiveUsersByTeam(ctx context.Context, teamName string, exclude []string) ([]*entity.User, error) {
+func (m *MockUserRepository) GetActiveUsersByTeam(
+	ctx context.Context,
+	teamName string,
+	exclude []string,
+) ([]*entity.User, error) {
 	args := m.Called(ctx, teamName, exclude)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*entity.User), args.Error(1)
+
+	users, ok := args.Get(0).([]*entity.User)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return users, args.Error(1)
 }
 
 func (m *MockUserRepository) GetPRsForReviewer(ctx context.Context, userID string) ([]*entity.PullRequestShort, error) {
@@ -76,7 +106,13 @@ func (m *MockUserRepository) GetPRsForReviewer(ctx context.Context, userID strin
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*entity.PullRequestShort), args.Error(1)
+
+	prs, ok := args.Get(0).([]*entity.PullRequestShort)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return prs, args.Error(1)
 }
 
 type MockTeamRepository struct {
@@ -93,7 +129,13 @@ func (m *MockTeamRepository) GetTeam(ctx context.Context, teamName string) (*ent
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.Team), args.Error(1)
+
+	team, ok := args.Get(0).(*entity.Team)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return team, args.Error(1)
 }
 
 func (m *MockTeamRepository) TeamExists(ctx context.Context, teamName string) (bool, error) {

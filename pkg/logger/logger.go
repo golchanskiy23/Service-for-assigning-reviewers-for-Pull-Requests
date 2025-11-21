@@ -12,11 +12,15 @@ type MultiLeveLHandler struct {
 	errorHandler slog.Handler
 }
 
-func (handler MultiLeveLHandler) Enabled(ctx context.Context, level slog.Level) bool {
+func (MultiLeveLHandler) Enabled(context.Context, slog.Level) bool {
 	return true
 }
 
-func (handler MultiLeveLHandler) Handle(ctx context.Context, r slog.Record) error {
+//nolint:gocritic // hugeParam: slog.Record is part of standard interface
+func (handler MultiLeveLHandler) Handle(
+	ctx context.Context,
+	r slog.Record,
+) error {
 	switch r.Level {
 	case slog.LevelInfo:
 		return handler.infoHandler.Handle(ctx, r)
@@ -24,8 +28,11 @@ func (handler MultiLeveLHandler) Handle(ctx context.Context, r slog.Record) erro
 		return handler.debugHandler.Handle(ctx, r)
 	case slog.LevelError:
 		return handler.errorHandler.Handle(ctx, r)
+	case slog.LevelWarn:
+		return handler.infoHandler.Handle(ctx, r)
+	default:
+		return handler.infoHandler.Handle(ctx, r)
 	}
-	return nil
 }
 
 func (handler MultiLeveLHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
@@ -46,9 +53,18 @@ func (handler MultiLeveLHandler) WithGroup(name string) slog.Handler {
 
 func SetupLogger() *slog.Logger {
 	handler := &MultiLeveLHandler{
-		infoHandler:  slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		debugHandler: slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		errorHandler: slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
+		infoHandler: slog.NewJSONHandler(
+			os.Stdout,
+			&slog.HandlerOptions{Level: slog.LevelInfo},
+		),
+		debugHandler: slog.NewJSONHandler(
+			os.Stdout,
+			&slog.HandlerOptions{Level: slog.LevelDebug},
+		),
+		errorHandler: slog.NewJSONHandler(
+			os.Stdout,
+			&slog.HandlerOptions{Level: slog.LevelError},
+		),
 	}
 
 	return slog.New(handler)

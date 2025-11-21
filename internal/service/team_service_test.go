@@ -1,21 +1,22 @@
 package service
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"context"
 	"errors"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 func TestTeamService_AddTeam(t *testing.T) {
 	tests := []struct {
-		name          string
 		team          *entity.Team
 		setupMocks    func(*MockTeamRepository)
-		expectedError string
 		expectedTeam  *entity.Team
+		name          string
+		expectedError string
 	}{
 		{
 			name: "successful team creation",
@@ -119,16 +120,15 @@ func TestTeamService_AddTeam(t *testing.T) {
 		},
 	}
 
+	//nolint:dupl // necessary tests
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			teamRepo := new(MockTeamRepository)
 
 			tt.setupMocks(teamRepo)
 
 			svc := NewTeamService(teamRepo)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			team, err := svc.AddTeam(ctx, tt.team)
 
@@ -139,6 +139,7 @@ func TestTeamService_AddTeam(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, team)
+
 				if tt.expectedTeam != nil {
 					assert.Equal(t, tt.expectedTeam.TeamName, team.TeamName)
 					assert.Equal(t, len(tt.expectedTeam.Members), len(team.Members))
@@ -152,11 +153,11 @@ func TestTeamService_AddTeam(t *testing.T) {
 
 func TestTeamService_GetTeam(t *testing.T) {
 	tests := []struct {
+		setupMocks    func(*MockTeamRepository)
+		expectedTeam  *entity.Team
 		name          string
 		teamName      string
-		setupMocks    func(*MockTeamRepository)
 		expectedError string
-		expectedTeam  *entity.Team
 	}{
 		{
 			name:     "successful get team",
@@ -214,16 +215,15 @@ func TestTeamService_GetTeam(t *testing.T) {
 		},
 	}
 
+	//nolint:dupl // necessary tests
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			teamRepo := new(MockTeamRepository)
 
 			tt.setupMocks(teamRepo)
 
 			svc := NewTeamService(teamRepo)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			team, err := svc.GetTeam(ctx, tt.teamName)
 
@@ -234,6 +234,7 @@ func TestTeamService_GetTeam(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, team)
+
 				if tt.expectedTeam != nil {
 					assert.Equal(t, tt.expectedTeam.TeamName, team.TeamName)
 					assert.Equal(t, len(tt.expectedTeam.Members), len(team.Members))

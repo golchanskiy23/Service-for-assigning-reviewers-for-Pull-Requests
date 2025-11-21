@@ -1,20 +1,21 @@
 package util
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateNewDelay(t *testing.T) {
 	tests := []struct {
+		checkFunc func(*testing.T, time.Duration)
 		name      string
 		attempt   int
 		maxVal    time.Duration
-		checkFunc func(*testing.T, time.Duration)
 	}{
 		{
-			name:    "attempt 0, max 1s",
+			name:    "attempt 0, max 1s (defaultMaxConnectTimeout)",
 			attempt: 0,
 			maxVal:  time.Second,
 			checkFunc: func(t *testing.T, delay time.Duration) {
@@ -23,7 +24,7 @@ func TestCreateNewDelay(t *testing.T) {
 			},
 		},
 		{
-			name:    "attempt 1, max 1s",
+			name:    "attempt 1, max 1s (defaultMaxConnectTimeout)",
 			attempt: 1,
 			maxVal:  time.Second,
 			checkFunc: func(t *testing.T, delay time.Duration) {
@@ -50,7 +51,7 @@ func TestCreateNewDelay(t *testing.T) {
 			},
 		},
 		{
-			name:    "attempt 4, max 1s",
+			name:    "attempt 4, max 1s (capped)",
 			attempt: 4,
 			maxVal:  time.Second,
 			checkFunc: func(t *testing.T, delay time.Duration) {
@@ -59,7 +60,7 @@ func TestCreateNewDelay(t *testing.T) {
 			},
 		},
 		{
-			name:    "attempt 5, max 1s",
+			name:    "attempt 5, max 1s (capped)",
 			attempt: 5,
 			maxVal:  time.Second,
 			checkFunc: func(t *testing.T, delay time.Duration) {
@@ -95,7 +96,7 @@ func TestCreateNewDelay(t *testing.T) {
 			},
 		},
 		{
-			name:    "attempt 3, max 500ms",
+			name:    "attempt 3, max 500ms (capped)",
 			attempt: 3,
 			maxVal:  time.Millisecond * 500,
 			checkFunc: func(t *testing.T, delay time.Duration) {
@@ -124,9 +125,7 @@ func TestCreateNewDelay(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			delay := CreateNewDelay(tt.attempt, tt.maxVal)
 			tt.checkFunc(t, delay)
 		})
@@ -138,7 +137,7 @@ func TestCreateNewDelay_MultipleCalls(t *testing.T) {
 	maxVal := time.Second
 	delays := make(map[time.Duration]bool)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		delay := CreateNewDelay(attempt, maxVal)
 		delays[delay] = true
 	}
@@ -150,7 +149,7 @@ func TestCreateNewDelay_BackoffCalculation(t *testing.T) {
 	maxVal := time.Second * 10
 
 	delays := make([]time.Duration, 5)
-	for i := 1; i < 5; i++ {
+	for i := range 5 {
 		delays[i] = CreateNewDelay(i, maxVal)
 	}
 

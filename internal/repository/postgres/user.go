@@ -1,16 +1,22 @@
 package postgres
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 	"context"
 	"errors"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 )
 
 type UserRepository interface {
 	GetUser(ctx context.Context, userID string) (*entity.User, error)
 	SetIsActive(ctx context.Context, userID string, active bool) error
-	GetActiveUsersByTeam(ctx context.Context, teamName string, exclude []string) ([]*entity.User, error)
+	GetActiveUsersByTeam(
+		ctx context.Context,
+		teamName string,
+		exclude []string,
+	) ([]*entity.User, error)
+	//nolint:revive // func
 	GetPRsForReviewer(ctx context.Context, userID string) ([]*entity.PullRequestShort, error)
 }
 
@@ -22,39 +28,63 @@ func NewUserPGRepository(db *database.DatabaseSource) UserRepository {
 	return &userPGRepository{db: db}
 }
 
-func (r *userPGRepository) GetUser(ctx context.Context, userID string) (*entity.User, error) {
+func (r *userPGRepository) GetUser(
+	ctx context.Context,
+	userID string,
+) (*entity.User, error) {
 	var user entity.User
+
 	err := r.db.Pool.QueryRow(ctx,
 		`SELECT user_id, username, team_name, is_active
 		 FROM users
 		 WHERE user_id = $1`,
-		userID).Scan(&user.UserID, &user.Username, &user.TeamName, &user.IsActive)
+		userID,
+	).Scan(
+		&user.UserID,
+		&user.Username,
+		&user.TeamName,
+		&user.IsActive,
+	)
 	if err != nil {
 		return nil, errors.New("NOT_FOUND")
 	}
+
 	return &user, nil
 }
 
-func (r *userPGRepository) SetIsActive(ctx context.Context, userID string, active bool) error {
+func (r *userPGRepository) SetIsActive(
+	ctx context.Context,
+	userID string,
+	active bool,
+) error {
 	result, err := r.db.Pool.Exec(ctx,
 		`UPDATE users SET is_active = $1 WHERE user_id = $2`, active, userID)
 	if err != nil {
 		return err
 	}
-	if result.RowsAffected() == 0 {
+
+	const noRowsAffected = 0
+	if result.RowsAffected() == noRowsAffected {
 		return errors.New("NOT_FOUND")
 	}
+
 	return nil
 }
 
-func (r *userPGRepository) GetActiveUsersByTeam(ctx context.Context, teamName string, exclude []string) ([]*entity.User, error) {
+func (r *userPGRepository) GetActiveUsersByTeam(
+	ctx context.Context,
+	teamName string,
+	exclude []string,
+) ([]*entity.User, error) {
 	query := `SELECT user_id, username, team_name, is_active
 			  FROM users
 			  WHERE team_name = $1 AND is_active = TRUE`
 	args := []interface{}{teamName}
 
-	if len(exclude) > 0 {
+	const emptySlice = 0
+	if len(exclude) > emptySlice {
 		query += ` AND NOT (user_id = ANY($2::text[]))`
+
 		args = append(args, exclude)
 	}
 
@@ -65,18 +95,30 @@ func (r *userPGRepository) GetActiveUsersByTeam(ctx context.Context, teamName st
 	defer rows.Close()
 
 	var users []*entity.User
+
 	for rows.Next() {
 		var user entity.User
-		if err := rows.Scan(&user.UserID, &user.Username, &user.TeamName, &user.IsActive); err != nil {
+		if err := rows.Scan(
+			&user.UserID,
+			&user.Username,
+			&user.TeamName,
+			&user.IsActive,
+		); err != nil {
 			return nil, err
 		}
+
 		users = append(users, &user)
 	}
+
 	return users, nil
 }
 
-func (r *userPGRepository) GetPRsForReviewer(ctx context.Context, userID string) ([]*entity.PullRequestShort, error) {
+func (r *userPGRepository) GetPRsForReviewer(
+	ctx context.Context,
+	userID string,
+) ([]*entity.PullRequestShort, error) {
 	rows, err := r.db.Pool.Query(ctx,
+		//nolint:revive // sql query
 		`SELECT pr.pull_request_id, pr.pull_request_name, pr.author_id, pr.status
 		 FROM pr_reviewers prr
 		 JOIN pull_requests pr ON pr.pull_request_id = prr.pull_request_id
@@ -89,12 +131,20 @@ func (r *userPGRepository) GetPRsForReviewer(ctx context.Context, userID string)
 	defer rows.Close()
 
 	var prs []*entity.PullRequestShort
+
 	for rows.Next() {
 		var pr entity.PullRequestShort
-		if err := rows.Scan(&pr.PullRequestID, &pr.PullRequestName, &pr.AuthorID, &pr.Status); err != nil {
+		if err := rows.Scan(
+			&pr.PullRequestID,
+			&pr.PullRequestName,
+			&pr.AuthorID,
+			&pr.Status,
+		); err != nil {
 			return nil, err
 		}
+
 		prs = append(prs, &pr)
 	}
+
 	return prs, nil
 }

@@ -1,16 +1,20 @@
 package app
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/config"
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
-	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/server"
 	"context"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"time"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/config"
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
+
+	"github.com/go-chi/chi/v5"
+
+	//nolint:revive // dependency
+	postgres "Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
+	server "Service-for-assigning-reviewers-for-Pull-Requests/pkg/server"
 )
 
 func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
@@ -19,10 +23,17 @@ func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
 	}
 
 	if cfg.Database.MaxConnLifetime != nil {
-		opts = append(opts, database.SetMaxConnLifetime(*cfg.Database.MaxConnLifetime))
+		opts = append(
+			opts,
+			database.SetMaxConnLifetime(*cfg.Database.MaxConnLifetime),
+		)
 	}
+
 	if cfg.Database.MaxConnectTimeout != nil {
-		opts = append(opts, database.SetMaxConnectTimeout(*cfg.Database.MaxConnectTimeout))
+		opts = append(
+			opts,
+			database.SetMaxConnectTimeout(*cfg.Database.MaxConnectTimeout),
+		)
 	}
 
 	db, err := database.NewStorage(
@@ -32,9 +43,11 @@ func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to init postgres: %w", err)
 	}
+
 	if err = db.Pool.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("ping error: %w", err)
 	}
+
 	return db, nil
 }
 
@@ -60,9 +73,12 @@ func Run(cfg *config.Config, logger *slog.Logger) error {
 	go func() {
 		<-time.After(cfg.Server.ShutdownTimeout)
 		logger.Info("shutdown timeout reached")
-		srv.FullShutdownTimeout(logger)
+		if err := srv.FullShutdownTimeout(logger); err != nil {
+			logger.Error("failed to shutdown server", "error", err)
+		}
 	}()
 
 	srv.GracefulShutdown(logger)
+
 	return nil
 }

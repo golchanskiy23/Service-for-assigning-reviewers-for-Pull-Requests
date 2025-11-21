@@ -1,13 +1,14 @@
 package service
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 func TestPRService_CreatePR(t *testing.T) {
@@ -194,9 +195,7 @@ func TestPRService_CreatePR(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			prRepo := new(MockPullRequestRepository)
 			userRepo := new(MockUserRepository)
 			teamRepo := new(MockTeamRepository)
@@ -204,7 +203,7 @@ func TestPRService_CreatePR(t *testing.T) {
 			tt.setupMocks(prRepo, userRepo, teamRepo)
 
 			service := NewPRService(prRepo, userRepo, teamRepo)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			pr, msg, err := service.CreatePR(ctx, tt.prID, tt.prName, tt.authorID)
 
@@ -219,6 +218,7 @@ func TestPRService_CreatePR(t *testing.T) {
 				assert.Equal(t, tt.prName, pr.PullRequestName)
 				assert.Equal(t, tt.authorID, pr.AuthorID)
 			}
+
 			assert.Equal(t, tt.expectedMsg, msg)
 
 			prRepo.AssertExpectations(t)
@@ -334,9 +334,7 @@ func TestPRService_MergePR(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			prRepo := new(MockPullRequestRepository)
 			userRepo := new(MockUserRepository)
 			teamRepo := new(MockTeamRepository)
@@ -344,7 +342,7 @@ func TestPRService_MergePR(t *testing.T) {
 			tt.setupMocks(prRepo)
 
 			service := NewPRService(prRepo, userRepo, teamRepo)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			pr, err := service.MergePR(ctx, tt.prID)
 
@@ -355,6 +353,7 @@ func TestPRService_MergePR(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, pr)
+
 				if tt.expectedStatus != "" {
 					assert.Equal(t, tt.expectedStatus, pr.Status)
 				}
@@ -503,7 +502,12 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user1", "user2"}).Return([]*entity.User{}, nil)
+				userRepo.On(
+					"GetActiveUsersByTeam",
+					mock.Anything,
+					"team1",
+					[]string{"user1", "user2"},
+				).Return([]*entity.User{}, nil)
 			},
 			expectedError: "NO_CANDIDATE",
 			expectedPR:    false,
@@ -571,9 +575,7 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			prRepo := new(MockPullRequestRepository)
 			userRepo := new(MockUserRepository)
 			teamRepo := new(MockTeamRepository)
@@ -581,7 +583,7 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 			tt.setupMocks(prRepo, userRepo)
 
 			service := NewPRService(prRepo, userRepo, teamRepo)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			pr, newID, err := service.ReassignReviewer(ctx, tt.prID, tt.oldReviewerID)
 
@@ -592,9 +594,11 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 				assert.Empty(t, newID)
 			} else {
 				assert.NoError(t, err)
+
 				if tt.expectedPR {
 					assert.NotNil(t, pr)
 				}
+
 				if tt.expectedNewID {
 					assert.NotEmpty(t, newID)
 				}

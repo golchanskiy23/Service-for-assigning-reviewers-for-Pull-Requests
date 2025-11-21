@@ -1,29 +1,36 @@
 package service
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
+//nolint:maintidx // Complex test with many test cases
 func TestUserService_ChangeActivateStatus(t *testing.T) {
 	tests := []struct {
+		setupMocks    func(*MockUserRepository, *MockPullRequestRepository, *MockTeamRepository, *PRService)
+		expectedUser  *entity.User
 		name          string
 		userID        string
-		isActive      bool
-		setupMocks    func(*MockUserRepository, *MockPullRequestRepository, *MockTeamRepository, *PRService)
 		expectedError string
-		expectedUser  *entity.User
+		isActive      bool
 	}{
 		{
 			name:     "successful activation",
 			userID:   "user1",
 			isActive: true,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -50,7 +57,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "successful deactivation without open PRs",
 			userID:   "user1",
 			isActive: false,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -78,7 +90,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "successful deactivation with open PRs - reassignment success",
 			userID:   "user1",
 			isActive: false,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -159,7 +176,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "successful deactivation with open PRs - reassignment failure, remove reviewer",
 			userID:   "user1",
 			isActive: false,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -182,7 +204,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil).Once()
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user2", "user1"}).Return([]*entity.User{}, nil)
+				userRepo.On(
+					"GetActiveUsersByTeam",
+					mock.Anything,
+					"team1",
+					[]string{"user2", "user1"},
+				).Return([]*entity.User{}, nil)
 				prRepo.On("GetPR", mock.Anything, "pr1").Return(&entity.PullRequest{
 					PullRequestID:     "pr1",
 					PullRequestName:   "Test PR 1",
@@ -212,7 +239,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "user not found",
 			userID:   "user1",
 			isActive: true,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(nil, errors.New("NOT_FOUND"))
 			},
 			expectedError: "NOT_FOUND",
@@ -222,7 +254,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "get open PRs error",
 			userID:   "user1",
 			isActive: false,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -238,7 +275,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "set is active error",
 			userID:   "user1",
 			isActive: true,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -254,7 +296,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "get user after update error",
 			userID:   "user1",
 			isActive: true,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
@@ -271,14 +318,26 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			name:     "deactivation with more than 5 open PRs",
 			userID:   "user1",
 			isActive: false,
-			setupMocks: func(userRepo *MockUserRepository, prRepo *MockPullRequestRepository, teamRepo *MockTeamRepository, prService *PRService) {
+			setupMocks: func(
+				userRepo *MockUserRepository,
+				prRepo *MockPullRequestRepository,
+				teamRepo *MockTeamRepository,
+				prService *PRService,
+			) {
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
 					TeamName: "team1",
 					IsActive: true,
 				}, nil).Once()
-				prRepo.On("GetOpenPRsByReviewer", mock.Anything, "user1").Return([]string{"pr1", "pr2", "pr3", "pr4", "pr5", "pr6", "pr7"}, nil)
+				prRepo.On(
+					"GetOpenPRsByReviewer",
+					mock.Anything,
+					"user1",
+				).Return(
+					[]string{"pr1", "pr2", "pr3", "pr4", "pr5", "pr6", "pr7"},
+					nil,
+				)
 				now := time.Now()
 				prIDs := []string{"pr1", "pr2", "pr3", "pr4", "pr5"}
 				for _, prID := range prIDs {
@@ -328,9 +387,7 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			userRepo := new(MockUserRepository)
 			prRepo := new(MockPullRequestRepository)
 			teamRepo := new(MockTeamRepository)
@@ -339,9 +396,9 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			tt.setupMocks(userRepo, prRepo, teamRepo, prService)
 
 			svc := NewUserService(userRepo, prRepo, teamRepo, prService)
-			ctx := context.Background()
+			ctx := t.Context()
 
-			user, err := svc.ChangeActivateStatus(ctx, tt.userID, tt.isActive)
+			user, err := svc.ChangeStatus(ctx, tt.userID, tt.isActive)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -350,6 +407,7 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, user)
+
 				if tt.expectedUser != nil {
 					assert.Equal(t, tt.expectedUser.UserID, user.UserID)
 					assert.Equal(t, tt.expectedUser.IsActive, user.IsActive)
@@ -364,12 +422,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 
 func TestUserService_GetPRsAssignedTo(t *testing.T) {
 	tests := []struct {
+		setupMocks     func(*MockUserRepository)
 		name           string
 		userID         string
-		setupMocks     func(*MockUserRepository)
 		expectedError  string
-		expectedPRs    int
 		expectedUserID string
+		expectedPRs    int
 	}{
 		{
 			name:   "successful get PRs",
@@ -445,9 +503,7 @@ func TestUserService_GetPRsAssignedTo(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			userRepo := new(MockUserRepository)
 			prRepo := new(MockPullRequestRepository)
 			teamRepo := new(MockTeamRepository)
@@ -456,7 +512,7 @@ func TestUserService_GetPRsAssignedTo(t *testing.T) {
 			tt.setupMocks(userRepo)
 
 			svc := NewUserService(userRepo, prRepo, teamRepo, prService)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			userID, prs, err := svc.GetPRsAssignedTo(ctx, tt.userID)
 
@@ -469,7 +525,7 @@ func TestUserService_GetPRsAssignedTo(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedUserID, userID)
 				assert.NotNil(t, prs)
-				assert.Equal(t, tt.expectedPRs, len(prs))
+				assert.Len(t, prs, tt.expectedPRs)
 			}
 
 			userRepo.AssertExpectations(t)

@@ -1,29 +1,40 @@
 package handlers
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 type MockPRService struct {
 	mock.Mock
 }
 
-func (m *MockPRService) CreatePR(ctx context.Context, prID, prName, authorID string) (*entity.PullRequest, string, error) {
+func (m *MockPRService) CreatePR(
+	ctx context.Context,
+	prID, prName, authorID string,
+) (*entity.PullRequest, string, error) {
 	args := m.Called(ctx, prID, prName, authorID)
 	if args.Get(0) == nil {
 		return nil, args.String(1), args.Error(2)
 	}
-	return args.Get(0).(*entity.PullRequest), args.String(1), args.Error(2)
+
+	pr, ok := args.Get(0).(*entity.PullRequest)
+	if !ok {
+		return nil, args.String(1), args.Error(2)
+	}
+
+	return pr, args.String(1), args.Error(2)
 }
 
 func (m *MockPRService) MergePR(ctx context.Context, prID string) (*entity.PullRequest, error) {
@@ -31,25 +42,41 @@ func (m *MockPRService) MergePR(ctx context.Context, prID string) (*entity.PullR
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.PullRequest), args.Error(1)
+
+	pr, ok := args.Get(0).(*entity.PullRequest)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return pr, args.Error(1)
 }
 
-func (m *MockPRService) ReassignReviewer(ctx context.Context, prID, oldReviewerID string) (*entity.PullRequest, string, error) {
+func (m *MockPRService) ReassignReviewer(
+	ctx context.Context,
+	prID, oldReviewerID string,
+) (*entity.PullRequest, string, error) {
 	args := m.Called(ctx, prID, oldReviewerID)
 	if args.Get(0) == nil {
 		return nil, args.String(1), args.Error(2)
 	}
-	return args.Get(0).(*entity.PullRequest), args.String(1), args.Error(2)
+
+	pr, ok := args.Get(0).(*entity.PullRequest)
+	if !ok {
+		return nil, args.String(1), args.Error(2)
+	}
+
+	return pr, args.String(1), args.Error(2)
 }
 
+//nolint:dupl // necessary tests
 func TestServices_PRCreateHandler(t *testing.T) {
 	tests := []struct {
-		name           string
 		requestBody    interface{}
 		setupMocks     func(*MockPRService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
+		name           string
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
 		{
 			name: "successful PR creation",
@@ -150,9 +177,7 @@ func TestServices_PRCreateHandler(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			prService := new(MockPRService)
 			tt.setupMocks(prService)
 
@@ -161,7 +186,9 @@ func TestServices_PRCreateHandler(t *testing.T) {
 			}
 
 			var body []byte
+
 			var err error
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {
@@ -181,14 +208,15 @@ func TestServices_PRCreateHandler(t *testing.T) {
 	}
 }
 
+//nolint:dupl // necessary tests
 func TestServices_PRMergeHandler(t *testing.T) {
 	tests := []struct {
-		name           string
 		requestBody    interface{}
 		setupMocks     func(*MockPRService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
+		name           string
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
 		{
 			name: "successful PR merge",
@@ -265,9 +293,7 @@ func TestServices_PRMergeHandler(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			prService := new(MockPRService)
 			tt.setupMocks(prService)
 
@@ -276,7 +302,9 @@ func TestServices_PRMergeHandler(t *testing.T) {
 			}
 
 			var body []byte
+
 			var err error
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {
@@ -296,14 +324,15 @@ func TestServices_PRMergeHandler(t *testing.T) {
 	}
 }
 
+//nolint:dupl // necessary tests
 func TestServices_PRReassignHandler(t *testing.T) {
 	tests := []struct {
-		name           string
 		requestBody    interface{}
 		setupMocks     func(*MockPRService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
+		name           string
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
 		{
 			name: "successful reassignment",
@@ -435,9 +464,7 @@ func TestServices_PRReassignHandler(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			prService := new(MockPRService)
 			tt.setupMocks(prService)
 
@@ -446,7 +473,9 @@ func TestServices_PRReassignHandler(t *testing.T) {
 			}
 
 			var body []byte
+
 			var err error
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {

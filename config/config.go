@@ -9,8 +9,8 @@ import (
 
 type Config struct {
 	App      App        `mapstructure:"app"`
-	Server   HttpServer `mapstructure:"server"`
 	Database DB         `mapstructure:"database"`
+	Server   HTTPServer `mapstructure:"server"`
 }
 
 type App struct {
@@ -19,39 +19,40 @@ type App struct {
 }
 
 type DB struct {
-	Name              string         `mapstructure:"name"`
-	Port              int            `mapstructure:"port"`
-	SSLMode           Mode           `mapstructure:"sslmode"`
-	Schema            string         `mapstructure:"schema"`
-	MaxPoolSize       int            `mapstructure:"maxpoolsize"`
 	MaxConnLifetime   *time.Duration `mapstructure:"max_conn_lifetime"`
 	MaxConnectTimeout *time.Duration `mapstructure:"max_connect_timeout"`
 	QueryTimeout      *time.Duration `mapstructure:"query_timeout"`
+	Name              string         `mapstructure:"name"`
+	SSLMode           Mode           `mapstructure:"sslmode"`
+	Schema            string         `mapstructure:"schema"`
+	Port              int            `mapstructure:"port"`
+	MaxPoolSize       int            `mapstructure:"maxpoolsize"`
 }
 
-type HttpServer struct {
-	ReadTimeout     *time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout    *time.Duration `mapstructure:"write_timeout"`
-	ShutdownTimeout time.Duration  `mapstructure:"shutdown_timeout"`
+type HTTPServer struct {
 	Addr            string         `mapstructure:"addr"`
+	ReadTimeout     *time.Duration `mapstructure:"read_timeout"`
+	ShutdownTimeout time.Duration  `mapstructure:"shutdown_timeout"`
+	WriteTimeout    *time.Duration `mapstructure:"write_timeout"`
 }
 
 type Mode string
 
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("fatal error config file: %s", err)
+		return nil, fmt.Errorf("fatal error config file: %w", err)
 	}
 
 	if err := viper.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("marshaling error: %s", err)
+		return nil, fmt.Errorf("marshaling error: %w", err)
 	}
+
 	return cfg, nil
 }
-

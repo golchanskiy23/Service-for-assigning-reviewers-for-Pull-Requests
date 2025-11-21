@@ -1,47 +1,69 @@
 package handlers
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 type MockUserService struct {
 	mock.Mock
 }
 
-func (m *MockUserService) ChangeActivateStatus(ctx context.Context, userID string, isActive bool) (*entity.User, error) {
+func (m *MockUserService) ChangeStatus(
+	ctx context.Context,
+	userID string,
+	isActive bool,
+) (*entity.User, error) {
 	args := m.Called(ctx, userID, isActive)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.User), args.Error(1)
+
+	user, ok := args.Get(0).(*entity.User)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return user, args.Error(1)
 }
 
-func (m *MockUserService) GetPRsAssignedTo(ctx context.Context, userID string) (string, []*entity.PullRequestShort, error) {
+func (m *MockUserService) GetPRsAssignedTo(
+	ctx context.Context,
+	userID string,
+) (string, []*entity.PullRequestShort, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(1) == nil {
 		return args.String(0), nil, args.Error(2)
 	}
-	return args.String(0), args.Get(1).([]*entity.PullRequestShort), args.Error(2)
+
+	prs, ok := args.Get(1).([]*entity.PullRequestShort)
+	if !ok {
+		return args.String(0), nil, args.Error(2)
+	}
+
+	return args.String(0), prs, args.Error(2)
 }
 
 func TestServices_UserSetIsActiveHandler(t *testing.T) {
 	tests := []struct {
-		name           string
 		requestBody    interface{}
 		setupMocks     func(*MockUserService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
+		name           string
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
+		//nolint:dupl // necessary tests
 		{
 			name: "successful activation",
 			requestBody: UserSetIsActiveRequest{
@@ -49,7 +71,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				IsActive: true,
 			},
 			setupMocks: func(userService *MockUserService) {
-				userService.On("ChangeActivateStatus", mock.Anything, "user1", true).Return(&entity.User{
+				userService.On("ChangeStatus", mock.Anything, "user1", true).Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
 					TeamName: "team1",
@@ -86,7 +108,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				IsActive: true,
 			},
 			setupMocks: func(userService *MockUserService) {
-				userService.On("ChangeActivateStatus", mock.Anything, "user1", true).Return(nil, errors.New("NOT_FOUND"))
+				userService.On("ChangeStatus", mock.Anything, "user1", true).Return(nil, errors.New("NOT_FOUND"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -104,7 +126,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				IsActive: true,
 			},
 			setupMocks: func(userService *MockUserService) {
-				userService.On("ChangeActivateStatus", mock.Anything, "user1", true).Return(nil, errors.New("db error"))
+				userService.On("ChangeStatus", mock.Anything, "user1", true).Return(nil, errors.New("db error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedError:  true,
@@ -114,6 +136,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				assert.NoError(t, err)
 			},
 		},
+		//nolint:dupl // necessary tests
 		{
 			name: "successful deactivation",
 			requestBody: UserSetIsActiveRequest{
@@ -121,7 +144,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				IsActive: false,
 			},
 			setupMocks: func(userService *MockUserService) {
-				userService.On("ChangeActivateStatus", mock.Anything, "user1", false).Return(&entity.User{
+				userService.On("ChangeStatus", mock.Anything, "user1", false).Return(&entity.User{
 					UserID:   "user1",
 					Username: "testuser",
 					TeamName: "team1",
@@ -141,9 +164,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			userService := new(MockUserService)
 			tt.setupMocks(userService)
 
@@ -152,7 +173,9 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 			}
 
 			var body []byte
+
 			var err error
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {
@@ -174,12 +197,12 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 
 func TestServices_UserGetReviewHandler(t *testing.T) {
 	tests := []struct {
+		setupMocks     func(*MockUserService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 		name           string
 		userID         string
-		setupMocks     func(*MockUserService)
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
 		{
 			name:   "successful get PRs",
@@ -207,7 +230,7 @@ func TestServices_UserGetReviewHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, "user1", resp.UserID)
-				assert.Equal(t, 2, len(resp.PullRequests))
+				assert.Len(t, resp.PullRequests, 2)
 			},
 		},
 		{
@@ -265,15 +288,13 @@ func TestServices_UserGetReviewHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, "user1", resp.UserID)
-				assert.Equal(t, 0, len(resp.PullRequests))
+				assert.Empty(t, resp.PullRequests)
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			userService := new(MockUserService)
 			tt.setupMocks(userService)
 
@@ -281,7 +302,7 @@ func TestServices_UserGetReviewHandler(t *testing.T) {
 				UserService: userService,
 			}
 
-			req := httptest.NewRequest(http.MethodGet, "/user/review?user_id="+tt.userID, nil)
+			req := httptest.NewRequest(http.MethodGet, "/user/review?user_id="+tt.userID, http.NoBody)
 			w := httptest.NewRecorder()
 
 			services.UserGetReviewHandler(w, req)

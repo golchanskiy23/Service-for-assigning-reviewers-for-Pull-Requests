@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -12,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 )
 
 type MockTeamService struct {
@@ -23,7 +24,13 @@ func (m *MockTeamService) AddTeam(ctx context.Context, team *entity.Team) (*enti
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.Team), args.Error(1)
+
+	team, ok := args.Get(0).(*entity.Team)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return team, args.Error(1)
 }
 
 func (m *MockTeamService) GetTeam(ctx context.Context, teamName string) (*entity.Team, error) {
@@ -31,17 +38,24 @@ func (m *MockTeamService) GetTeam(ctx context.Context, teamName string) (*entity
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.Team), args.Error(1)
+
+	team, ok := args.Get(0).(*entity.Team)
+	if !ok {
+		return nil, args.Error(1)
+	}
+
+	return team, args.Error(1)
 }
 
 func TestServices_TeamAddHandler(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
-		name           string
 		requestBody    interface{}
 		setupMocks     func(*MockTeamService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
+		name           string
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
 		{
 			name: "successful team creation",
@@ -68,7 +82,7 @@ func TestServices_TeamAddHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, "team1", resp.Team.TeamName)
-				assert.Equal(t, 2, len(resp.Team.Members))
+				assert.Len(t, resp.Team.Members, 2)
 			},
 		},
 		{
@@ -154,15 +168,15 @@ func TestServices_TeamAddHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, "team1", resp.Team.TeamName)
-				assert.Equal(t, 0, len(resp.Team.Members))
+				assert.Empty(t, resp.Team.Members)
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			teamService := new(MockTeamService)
 			tt.setupMocks(teamService)
 
@@ -171,7 +185,9 @@ func TestServices_TeamAddHandler(t *testing.T) {
 			}
 
 			var body []byte
+
 			var err error
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {
@@ -192,13 +208,14 @@ func TestServices_TeamAddHandler(t *testing.T) {
 }
 
 func TestServices_TeamGetHandler(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
+		setupMocks     func(*MockTeamService)
+		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 		name           string
 		teamName       string
-		setupMocks     func(*MockTeamService)
 		expectedStatus int
 		expectedError  bool
-		checkResponse  func(*testing.T, *httptest.ResponseRecorder)
 	}{
 		{
 			name:     "successful get team",
@@ -219,7 +236,7 @@ func TestServices_TeamGetHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, "team1", resp.TeamName)
-				assert.Equal(t, 2, len(resp.Members))
+				assert.Len(t, resp.Members, 2)
 			},
 		},
 		{
@@ -235,6 +252,7 @@ func TestServices_TeamGetHandler(t *testing.T) {
 				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
 			},
 		},
+		//nolint:dupl // necessary tests
 		{
 			name:     "team not found",
 			teamName: "team1",
@@ -281,15 +299,15 @@ func TestServices_TeamGetHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, "team1", resp.TeamName)
-				assert.Equal(t, 0, len(resp.Members))
+				assert.Empty(t, resp.Members)
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			teamService := new(MockTeamService)
 			tt.setupMocks(teamService)
 
@@ -297,7 +315,7 @@ func TestServices_TeamGetHandler(t *testing.T) {
 				TeamService: teamService,
 			}
 
-			req := httptest.NewRequest(http.MethodGet, "/team/get?team_name="+tt.teamName, nil)
+			req := httptest.NewRequest(http.MethodGet, "/team/get?team_name="+tt.teamName, http.NoBody)
 			w := httptest.NewRecorder()
 
 			services.TeamGetHandler(w, req)

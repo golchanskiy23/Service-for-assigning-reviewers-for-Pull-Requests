@@ -1,16 +1,18 @@
 package server
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/config"
 	"context"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/config"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -18,6 +20,7 @@ const (
 	defaultWriteTimeout    = 5 * time.Second
 	defaultAddr            = "0.0.0.0:3333"
 	defaultShutdownTimeout = 10 * time.Second
+	chanBufferSize         = 1
 )
 
 type Server struct {
@@ -41,13 +44,15 @@ func NewServer(handler http.Handler, options ...Option) *Server {
 			WriteTimeout: defaultWriteTimeout,
 			Addr:         defaultAddr,
 		},
-		channelErr:      make(chan error, 1),
+		channelErr:      make(chan error, chanBufferSize),
 		shutdownTimeout: defaultShutdownTimeout,
 	}
 	for _, option := range options {
 		option(server)
 	}
+
 	server.Start()
+
 	return server
 }
 
@@ -55,15 +60,18 @@ func (s *Server) FullShutdownTimeout(logger *slog.Logger) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 	defer cancel()
 	logger.Info("Shutting down server...\n")
+
 	if err := s.internalServer.Shutdown(ctx); err != nil {
-		return fmt.Errorf("server shutdown filed: %v", err)
+		return fmt.Errorf("server shutdown filed: %w", err)
 	}
+
 	return nil
 }
 
 func (s *Server) GracefulShutdown(logger *slog.Logger) {
-	osInterruptChan := make(chan os.Signal, 1)
+	osInterruptChan := make(chan os.Signal, chanBufferSize)
 	signal.Notify(osInterruptChan, syscall.SIGTERM, syscall.SIGINT)
+
 	timeoutChan := time.After(s.shutdownTimeout)
 
 	select {
@@ -79,6 +87,7 @@ func (s *Server) GracefulShutdown(logger *slog.Logger) {
 	defer cancel()
 
 	logger.Info("shutting down server...")
+
 	if err := s.internalServer.Shutdown(ctx); err != nil {
 		logger.Error("graceful shutdown failed", slog.Any("error", err))
 	} else {
@@ -88,16 +97,25 @@ func (s *Server) GracefulShutdown(logger *slog.Logger) {
 	close(osInterruptChan)
 }
 
-func StartServer(cfg *config.Config, controller *chi.Mux, logger *slog.Logger) *Server {
+func StartServer(
+	cfg *config.Config,
+	controller *chi.Mux,
+	logger *slog.Logger,
+) *Server {
 	customServer := NewServer(controller,
 		SetReadTimeout(*cfg.Server.ReadTimeout),
 		SetWriteTimeout(*cfg.Server.WriteTimeout),
 		SetAddr(cfg.Server.Addr),
 		SetShutdownTimeout(cfg.Server.ShutdownTimeout),
 	)
-	fmt.Println(customServer.internalServer.ReadTimeout,
-		customServer.internalServer.WriteTimeout, customServer.internalServer.Addr,
-		customServer.shutdownTimeout)
+	//nolint:revive // Debug output, line length is acceptable
+	fmt.Println(
+		customServer.internalServer.ReadTimeout,
+		customServer.internalServer.WriteTimeout,
+		customServer.internalServer.Addr,
+		customServer.shutdownTimeout,
+	)
 	logger.Info("successfully created server\n")
+
 	return customServer
 }

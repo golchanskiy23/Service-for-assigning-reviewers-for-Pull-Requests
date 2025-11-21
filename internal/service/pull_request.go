@@ -1,12 +1,21 @@
 package service
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
 	"context"
 	"errors"
 	"math/rand"
 	"time"
+
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
+	//nolint:revive // necessary import
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+)
+
+const (
+	prQueryTimeout = 250 * time.Millisecond
+	emptyString    = ""
+	notFoundErr    = "NOT_FOUND"
+	zeroLength     = 0
 )
 
 type PRService struct {
@@ -15,8 +24,8 @@ type PRService struct {
 	teamRepo postgres.TeamRepository
 }
 
+//nolint:revive // func
 func NewPRService(r postgres.PullRequestRepository, u postgres.UserRepository, t postgres.TeamRepository) *PRService {
-	rand.Seed(time.Now().UnixNano())
 	return &PRService{
 		repo:     r,
 		userRepo: u,
@@ -24,34 +33,41 @@ func NewPRService(r postgres.PullRequestRepository, u postgres.UserRepository, t
 	}
 }
 
-func (s *PRService) CreatePR(ctx context.Context, prID, prName, authorID string) (*entity.PullRequest, string, error) {
-	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+//nolint:revive,cyclop // Complex business logic for PR creation
+func (s *PRService) CreatePR(
+	ctx context.Context,
+	prID, prName, authorID string,
+) (*entity.PullRequest, string, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, prQueryTimeout)
+
 	defer cancel()
 
 	exists, err := s.repo.PRExists(queryCtx, prID)
 	if err != nil {
-		return nil, "", err
+		return nil, emptyString, err
 	}
+
 	if exists {
-		return nil, "", errors.New("PR_EXISTS")
+		return nil, emptyString, errors.New("PR_EXISTS")
 	}
 
 	author, err := s.userRepo.GetUser(queryCtx, authorID)
 	if err != nil {
-		return nil, "", errors.New("NOT_FOUND")
+		return nil, emptyString, errors.New("NOT_FOUND")
 	}
 
 	_, err = s.teamRepo.GetTeam(queryCtx, author.TeamName)
 	if err != nil {
-		return nil, "", errors.New("NOT_FOUND")
+		return nil, emptyString, errors.New("NOT_FOUND")
 	}
 
 	candidates, err := s.userRepo.GetActiveUsersByTeam(queryCtx, author.TeamName, []string{authorID})
 	if err != nil {
-		return nil, "", err
+		return nil, emptyString, err
 	}
 
 	reviewerIDs := []string{}
+
 	if len(candidates) > 0 {
 		shuffled := make([]*entity.User, len(candidates))
 		copy(shuffled, candidates)
@@ -63,7 +79,8 @@ func (s *PRService) CreatePR(ctx context.Context, prID, prName, authorID string)
 		if len(shuffled) < count {
 			count = len(shuffled)
 		}
-		for i := 0; i < count; i++ {
+
+		for i := range count {
 			reviewerIDs = append(reviewerIDs, shuffled[i].UserID)
 		}
 	}
@@ -81,26 +98,28 @@ func (s *PRService) CreatePR(ctx context.Context, prID, prName, authorID string)
 	err = s.repo.CreatePR(queryCtx, pr, reviewerIDs)
 	if err != nil {
 		if err.Error() == "PR_EXISTS" {
-			return nil, "", err
+			return nil, emptyString, err
 		}
-		return nil, "", err
+
+		return nil, emptyString, err
 	}
 
 	createdPR, err := s.repo.GetPR(queryCtx, prID)
 	if err != nil {
-		return nil, "", err
+		return nil, emptyString, err
 	}
 
-	return createdPR, "", nil
+	return createdPR, emptyString, nil
 }
 
+//nolint:revive // func
 func (s *PRService) MergePR(ctx context.Context, prID string) (*entity.PullRequest, error) {
-	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+	queryCtx, cancel := context.WithTimeout(ctx, prQueryTimeout)
 	defer cancel()
 
 	pr, err := s.repo.GetPR(queryCtx, prID)
 	if err != nil {
-		return nil, errors.New("NOT_FOUND")
+		return nil, errors.New(notFoundErr)
 	}
 
 	if pr.Status == entity.MERGED {
@@ -119,49 +138,59 @@ func (s *PRService) MergePR(ctx context.Context, prID string) (*entity.PullReque
 	return s.repo.GetPR(queryCtx, prID)
 }
 
-func (s *PRService) ReassignReviewer(ctx context.Context, prID, oldReviewerID string) (*entity.PullRequest, string, error) {
-	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+//nolint:revive,cyclop // Complex business logic for PR reassignment
+func (s *PRService) ReassignReviewer(
+	ctx context.Context,
+	prID, oldReviewerID string,
+) (*entity.PullRequest, string, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, prQueryTimeout)
+
 	defer cancel()
 
 	pr, err := s.repo.GetPR(queryCtx, prID)
 	if err != nil {
-		return nil, "", errors.New("NOT_FOUND")
+		return nil, emptyString, errors.New("NOT_FOUND")
 	}
 
 	if pr.Status == entity.MERGED {
-		return nil, "", errors.New("PR_MERGED")
+		return nil, emptyString, errors.New("PR_MERGED")
 	}
 
 	found := false
+
 	for _, reviewerID := range pr.AssignedReviewers {
 		if reviewerID == oldReviewerID {
 			found = true
 			break
 		}
 	}
+
 	if !found {
-		return nil, "", errors.New("NOT_ASSIGNED")
+		return nil, emptyString, errors.New("NOT_ASSIGNED")
 	}
 
 	oldReviewer, err := s.userRepo.GetUser(queryCtx, oldReviewerID)
 	if err != nil {
-		return nil, "", errors.New("NOT_FOUND")
+		return nil, emptyString, errors.New("NOT_FOUND")
 	}
 
 	exclude := []string{pr.AuthorID, oldReviewerID}
+
 	candidates, err := s.userRepo.GetActiveUsersByTeam(queryCtx, oldReviewer.TeamName, exclude)
 	if err != nil {
-		return nil, "", err
+		return nil, emptyString, err
 	}
 
-	if len(candidates) == 0 {
-		return nil, "", errors.New("NO_CANDIDATE")
+	if len(candidates) == zeroLength {
+		return nil, emptyString, errors.New("NO_CANDIDATE")
 	}
 
+	//nolint:gosec // math/rand is sufficient for selecting a random reviewer
 	newReviewer := candidates[rand.Intn(len(candidates))]
 
 	newReviewers := make([]string, len(pr.AssignedReviewers))
 	copy(newReviewers, pr.AssignedReviewers)
+
 	for i, reviewerID := range newReviewers {
 		if reviewerID == oldReviewerID {
 			newReviewers[i] = newReviewer.UserID
@@ -171,12 +200,12 @@ func (s *PRService) ReassignReviewer(ctx context.Context, prID, oldReviewerID st
 
 	err = s.repo.UpdateReviewers(queryCtx, prID, newReviewers)
 	if err != nil {
-		return nil, "", err
+		return nil, emptyString, err
 	}
 
 	updatedPR, err := s.repo.GetPR(queryCtx, prID)
 	if err != nil {
-		return nil, "", err
+		return nil, emptyString, err
 	}
 
 	return updatedPR, newReviewer.UserID, nil

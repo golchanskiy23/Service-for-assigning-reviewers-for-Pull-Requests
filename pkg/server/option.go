@@ -24,6 +24,7 @@ func SetAddr(addr string) Option {
 			srv.internalServer.Addr = env
 			return
 		}
+
 		srv.internalServer.Addr = defaultAddr
 	}
 }
