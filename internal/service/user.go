@@ -1,32 +1,94 @@
 package service
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
 	"context"
+	"errors"
+	"time"
 )
 
 type UserService struct {
-	repo postgres.UserRepository
+	repo      postgres.UserRepository
+	prRepo    postgres.PullRequestRepository
+	teamRepo  postgres.TeamRepository
+	prService *PRService
 }
 
-func NewUserService(repo postgres.UserRepository) *UserService {
-	return &UserService{repo: repo}
+func NewUserService(repo postgres.UserRepository, prRepo postgres.PullRequestRepository, teamRepo postgres.TeamRepository, prService *PRService) *UserService {
+	return &UserService{
+		repo:      repo,
+		prRepo:    prRepo,
+		teamRepo:  teamRepo,
+		prService: prService,
+	}
 }
 
-func (s *UserService) ActivateUser(ctx context.Context, id int) error {
-	return s.repo.SetIsActive(ctx, id, true)
+func (s *UserService) ChangeActivateStatus(ctx context.Context, userID string, isActive bool) (*entity.User, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
+	defer cancel()
+
+	user, err := s.repo.GetUser(queryCtx, userID)
+	if err != nil {
+		return nil, errors.New("NOT_FOUND")
+	}
+
+	if !isActive && user.IsActive {
+		openPRs, err := s.prRepo.GetOpenPRsByReviewer(queryCtx, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		maxPRs := 5
+		if len(openPRs) > maxPRs {
+			openPRs = openPRs[:maxPRs]
+		}
+
+		for _, prID := range openPRs {
+			reassignCtx, reassignCancel := context.WithTimeout(queryCtx, 100*time.Millisecond)
+			_, _, err := s.prService.ReassignReviewer(reassignCtx, prID, userID)
+			reassignCancel()
+
+			if err != nil {
+				pr, err := s.prRepo.GetPR(queryCtx, prID)
+				if err == nil {
+					newReviewers := []string{}
+					for _, reviewerID := range pr.AssignedReviewers {
+						if reviewerID != userID {
+							newReviewers = append(newReviewers, reviewerID)
+						}
+					}
+					s.prRepo.UpdateReviewers(queryCtx, prID, newReviewers)
+				}
+			}
+		}
+	}
+
+	err = s.repo.SetIsActive(queryCtx, userID, isActive)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err = s.repo.GetUser(queryCtx, userID)
+	if err != nil {
+		return nil, errors.New("NOT_FOUND")
+	}
+	return user, nil
 }
 
-func (s *UserService) GetUserReviews(ctx context.Context, id int) ([]string, error) {
-	return s.repo.GetReview(ctx, id)
-}
+func (s *UserService) GetPRsAssignedTo(ctx context.Context, userID string) (string, []*entity.PullRequestShort, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+	defer cancel()
 
-/*
-func (s *UserService) SetUserActive(userID int64, active bool) (*entity.User, error) {
-	return s.repo.UpdateActive(userID, active)
-}
+	_, err := s.repo.GetUser(queryCtx, userID)
+	if err != nil {
+		return "", nil, errors.New("NOT_FOUND")
+	}
 
-func (s *UserService) GetPRsAssignedTo(userID int64) ([]entity.PullRequest, error) {
-	return s.repo.GetPRsForReviewer(userID)
+	prs, err := s.repo.GetPRsForReviewer(queryCtx, userID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return userID, prs, nil
 }
-*/
