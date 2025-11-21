@@ -1,10 +1,6 @@
 package server
 
-import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
-	"github.com/go-chi/chi/v5"
-)
-
+/*
 func RegisterRoutes(h *handlers.ServiceExecution, r *chi.Mux) {
 
 	r.Route("/team", func(r chi.Router) {
@@ -23,4 +19,4 @@ func RegisterRoutes(h *handlers.ServiceExecution, r *chi.Mux) {
 		r.Post("/reassign", h.PRReassignHandler)
 	})
 
-}
+}*/

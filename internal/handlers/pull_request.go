@@ -1,11 +1,5 @@
 package handlers
 
-import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/util"
-	"encoding/json"
-	"net/http"
-)
-
 type PRCreateRequest struct {
 	Title  string `json:"title"`
 	Author int    `json:"author"`
@@ -20,6 +14,7 @@ type PRMergeRequest struct {
 	PRID int `json:"prId"`
 }
 
+/*
 func (service *ServiceExecution) PRCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -67,3 +62,4 @@ func (service *ServiceExecution) PRReassignHandler(w http.ResponseWriter, r *htt
 
 	util.RespondJSON(w, http.StatusOK, pr)
 }
+*/
