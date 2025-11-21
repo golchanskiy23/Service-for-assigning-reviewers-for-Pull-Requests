@@ -1,6 +1,13 @@
 package service
 
-import "Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+	"context"
+	"errors"
+	"math/rand"
+	"time"
+)
 
 type PRService struct {
 	repo     postgres.PullRequestRepository
@@ -9,6 +16,7 @@ type PRService struct {
 }
 
 func NewPRService(r postgres.PullRequestRepository, u postgres.UserRepository, t postgres.TeamRepository) *PRService {
+	rand.Seed(time.Now().UnixNano())
 	return &PRService{
 		repo:     r,
 		userRepo: u,
@@ -16,102 +24,160 @@ func NewPRService(r postgres.PullRequestRepository, u postgres.UserRepository, t
 	}
 }
 
-/*
-func (s *PRService) CreatePR(pr *entity.PullRequest) (*entity.PullRequest, error) {
-	team, err := s.teamRepo.GetTeam(pr.TeamName)
+func (s *PRService) CreatePR(ctx context.Context, prID, prName, authorID string) (*entity.PullRequest, string, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+	defer cancel()
+
+	exists, err := s.repo.PRExists(queryCtx, prID)
 	if err != nil {
-		return nil, errors.New("team not found")
+		return nil, "", err
+	}
+	if exists {
+		return nil, "", errors.New("PR_EXISTS")
 	}
 
-	// Получаем активных ревьюверов
-	exclude := []int64{pr.AuthorID}
-	reviewers, err := s.repo.GetActiveReviewers(team.Name, exclude)
+	author, err := s.userRepo.GetUser(queryCtx, authorID)
+	if err != nil {
+		return nil, "", errors.New("NOT_FOUND")
+	}
+
+	_, err = s.teamRepo.GetTeam(queryCtx, author.TeamName)
+	if err != nil {
+		return nil, "", errors.New("NOT_FOUND")
+	}
+
+	candidates, err := s.userRepo.GetActiveUsersByTeam(queryCtx, author.TeamName, []string{authorID})
+	if err != nil {
+		return nil, "", err
+	}
+
+	reviewerIDs := []string{}
+	if len(candidates) > 0 {
+		shuffled := make([]*entity.User, len(candidates))
+		copy(shuffled, candidates)
+		rand.Shuffle(len(shuffled), func(i, j int) {
+			shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+		})
+
+		count := 2
+		if len(shuffled) < count {
+			count = len(shuffled)
+		}
+		for i := 0; i < count; i++ {
+			reviewerIDs = append(reviewerIDs, shuffled[i].UserID)
+		}
+	}
+
+	now := time.Now()
+	pr := &entity.PullRequest{
+		PullRequestID:     prID,
+		PullRequestName:   prName,
+		AuthorID:          authorID,
+		Status:            entity.OPEN,
+		AssignedReviewers: reviewerIDs,
+		CreatedAt:         &now,
+	}
+
+	err = s.repo.CreatePR(queryCtx, pr, reviewerIDs)
+	if err != nil {
+		if err.Error() == "PR_EXISTS" {
+			return nil, "", err
+		}
+		return nil, "", err
+	}
+
+	createdPR, err := s.repo.GetPR(queryCtx, prID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return createdPR, "", nil
+}
+
+func (s *PRService) MergePR(ctx context.Context, prID string) (*entity.PullRequest, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+	defer cancel()
+
+	pr, err := s.repo.GetPR(queryCtx, prID)
+	if err != nil {
+		return nil, errors.New("NOT_FOUND")
+	}
+
+	if pr.Status == entity.MERGED {
+		return pr, nil
+	}
+
+	pr.Status = entity.MERGED
+	now := time.Now()
+	pr.MergedAt = &now
+
+	err = s.repo.UpdatePR(queryCtx, pr)
 	if err != nil {
 		return nil, err
 	}
 
-	// Перемешиваем
-	rand.Shuffle(len(reviewers), func(i, j int) {
-		reviewers[i], reviewers[j] = reviewers[j], reviewers[i]
-	})
-
-	// Берем до 2 ревьюверов
-	for i := 0; i < len(reviewers) && len(pr.Reviewers) < 2; i++ {
-		pr.Reviewers = append(pr.Reviewers, reviewers[i].ID)
-	}
-
-	pr.Status = entity.PROpen
-
-	return pr, s.repo.CreatePR(pr)
+	return s.repo.GetPR(queryCtx, prID)
 }
 
-func (s *PRService) MergePR(id int64) (*entity.PullRequest, error) {
-	pr, err := s.repo.GetPR(id)
+func (s *PRService) ReassignReviewer(ctx context.Context, prID, oldReviewerID string) (*entity.PullRequest, string, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+	defer cancel()
+
+	pr, err := s.repo.GetPR(queryCtx, prID)
 	if err != nil {
-		return nil, errors.New("not found")
+		return nil, "", errors.New("NOT_FOUND")
 	}
 
-	if pr.Status == entity.PRMerged {
-		return pr, nil // идемпотентность
+	if pr.Status == entity.MERGED {
+		return nil, "", errors.New("PR_MERGED")
 	}
 
-	pr.Status = entity.PRMerged
-	return pr, s.repo.UpdatePR(pr)
-}
-
-func (s *PRService) ReassignReviewer(prID, oldReviewerID int64) (*entity.PullRequest, int64, error) {
-	pr, err := s.repo.GetPR(prID)
-	if err != nil {
-		return nil, 0, errors.New("pr not found")
-	}
-
-	if pr.Status == entity.PRMerged {
-		return nil, 0, errors.New("PR_MERGED")
-	}
-
-	// Проверяем, что юзер был ревьювером
 	found := false
-	for _, r := range pr.Reviewers {
-		if r == oldReviewerID {
+	for _, reviewerID := range pr.AssignedReviewers {
+		if reviewerID == oldReviewerID {
 			found = true
 			break
 		}
 	}
 	if !found {
-		return nil, 0, errors.New("NOT_ASSIGNED")
+		return nil, "", errors.New("NOT_ASSIGNED")
 	}
 
-	// Нужно получить команду ревьювера
-	reviewer, err := s.userRepo.GetUser(oldReviewerID)
+	oldReviewer, err := s.userRepo.GetUser(queryCtx, oldReviewerID)
 	if err != nil {
-		return nil, 0, errors.New("user not found")
+		return nil, "", errors.New("NOT_FOUND")
 	}
 
-	team, err := s.teamRepo.GetTeam(reviewer.TeamName)
+	exclude := []string{pr.AuthorID, oldReviewerID}
+	candidates, err := s.userRepo.GetActiveUsersByTeam(queryCtx, oldReviewer.TeamName, exclude)
 	if err != nil {
-		return nil, 0, errors.New("team not found")
-	}
-
-	exclude := append([]int64{pr.AuthorID, oldReviewerID}, pr.Reviewers...)
-	candidates, err := s.repo.GetActiveReviewers(team.Name, exclude)
-	if err != nil {
-		return nil, 0, err
+		return nil, "", err
 	}
 
 	if len(candidates) == 0 {
-		return nil, 0, errors.New("NO_CANDIDATE")
+		return nil, "", errors.New("NO_CANDIDATE")
 	}
 
 	newReviewer := candidates[rand.Intn(len(candidates))]
 
-	// заменить
-	for i, r := range pr.Reviewers {
-		if r == oldReviewerID {
-			pr.Reviewers[i] = newReviewer.ID
+	newReviewers := make([]string, len(pr.AssignedReviewers))
+	copy(newReviewers, pr.AssignedReviewers)
+	for i, reviewerID := range newReviewers {
+		if reviewerID == oldReviewerID {
+			newReviewers[i] = newReviewer.UserID
 			break
 		}
 	}
 
-	return pr, newReviewer.ID, s.repo.UpdatePR(pr)
+	err = s.repo.UpdateReviewers(queryCtx, prID, newReviewers)
+	if err != nil {
+		return nil, "", err
+	}
+
+	updatedPR, err := s.repo.GetPR(queryCtx, prID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return updatedPR, newReviewer.UserID, nil
 }
-*/
