@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -39,6 +41,14 @@ func validateLoadTestRequest(req *LoadTestRequest) error {
 }
 
 func (s *Services) LoadTestHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			fmt.Println("Panic in LoadTestHandler:", rec)
+			debug.PrintStack()
+		}
+	}()
+
+	fmt.Println(">>> LoadTestHandler start: r nil?", r == nil)
 	q := r.URL.Query()
 	req := LoadTestRequest{}
 	freqStr := q.Get("freq")

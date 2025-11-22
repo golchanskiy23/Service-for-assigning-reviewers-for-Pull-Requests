@@ -124,7 +124,7 @@ func TestServices_TeamAddHandler(t *testing.T) {
 			setupMocks: func(teamService *MockTeamService) {
 				teamService.On("AddTeam", mock.Anything, mock.AnythingOfType("*entity.Team")).Return(nil, entity.ErrTeamExists)
 			},
-			expectedStatus: http.StatusConflict,
+			expectedStatus: http.StatusBadRequest,
 			expectedError:  true,
 			checkResponse: func(t *testing.T, w *httptest.ResponseRecorder) {
 				var resp entity.ErrorResponse
