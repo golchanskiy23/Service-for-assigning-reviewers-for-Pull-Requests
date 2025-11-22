@@ -27,32 +27,41 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
-				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, nil)
-				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
-					UserID:   "user1",
-					Username: "testuser",
-					TeamName: "team1",
-					IsActive: true,
-				}, nil)
-				teamRepo.On("GetTeam", mock.Anything, "team1").Return(&entity.Team{
-					TeamName: "team1",
-					Members:  []entity.TeamMember{},
-				}, nil)
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user1"}).Return([]*entity.User{
-					{UserID: "user2", Username: "user2", TeamName: "team1", IsActive: true},
-					{UserID: "user3", Username: "user3", TeamName: "team1", IsActive: true},
-				}, nil)
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
+				prRepo.On("PRExists", mock.Anything, "pr1").
+					Return(false, nil)
+				userRepo.On("GetUser", mock.Anything, "user1").
+					Return(&entity.User{
+						UserID:   "user1",
+						Username: "testuser",
+						TeamName: "team1",
+						IsActive: true,
+					}, nil)
+				teamRepo.On("GetTeam", mock.Anything, "team1").
+					Return(&entity.Team{
+						TeamName: "team1",
+						Members:  []entity.TeamMember{},
+					}, nil)
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything, "team1", []string{"user1"}).
+					Return([]*entity.User{
+						{UserID: "user2", Username: "user2", TeamName: "team1", IsActive: true},
+						{UserID: "user3", Username: "user3", TeamName: "team1", IsActive: true},
+					}, nil)
 				now := time.Now()
-				prRepo.On("CreatePR", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-				prRepo.On("GetPR", mock.Anything, "pr1").Return(&entity.PullRequest{
-					PullRequestID:     "pr1",
-					PullRequestName:   "Test PR",
-					AuthorID:          "user1",
-					Status:            entity.OPEN,
-					AssignedReviewers: []string{"user2", "user3"},
-					CreatedAt:         &now,
-				}, nil)
+				prRepo.On("CreatePR",
+					mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				prRepo.On("GetPR", mock.Anything, "pr1").
+					Return(&entity.PullRequest{
+						PullRequestID:     "pr1",
+						PullRequestName:   "Test PR",
+						AuthorID:          "user1",
+						Status:            entity.OPEN,
+						AssignedReviewers: []string{"user2", "user3"},
+						CreatedAt:         &now,
+					}, nil)
 			},
 			expectedError: "",
 			expectedMsg:   "",
@@ -62,8 +71,11 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
-				prRepo.On("PRExists", mock.Anything, "pr1").Return(true, nil)
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
+				prRepo.On("PRExists", mock.Anything, "pr1").
+					Return(true, nil)
 			},
 			expectedError: "PR_EXISTS",
 			expectedMsg:   "",
@@ -73,7 +85,9 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
 				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, errors.New("db error"))
 			},
 			expectedError: "db error",
@@ -84,7 +98,9 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
 				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, nil)
 				userRepo.On("GetUser", mock.Anything, "user1").Return(nil, errors.New("NOT_FOUND"))
 			},
@@ -96,7 +112,9 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
 				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, nil)
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
@@ -104,7 +122,9 @@ func TestPRService_CreatePR(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
-				teamRepo.On("GetTeam", mock.Anything, "team1").Return(nil, errors.New("NOT_FOUND"))
+				teamRepo.On("GetTeam",
+					mock.Anything, "team1").
+					Return(nil, errors.New("NOT_FOUND"))
 			},
 			expectedError: "NOT_FOUND",
 			expectedMsg:   "",
@@ -114,7 +134,9 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
 				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, nil)
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
@@ -122,21 +144,31 @@ func TestPRService_CreatePR(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
-				teamRepo.On("GetTeam", mock.Anything, "team1").Return(&entity.Team{
-					TeamName: "team1",
-					Members:  []entity.TeamMember{},
-				}, nil)
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user1"}).Return([]*entity.User{}, nil)
+				teamRepo.On("GetTeam", mock.Anything, "team1").
+					Return(&entity.Team{
+						TeamName: "team1",
+						Members:  []entity.TeamMember{},
+					}, nil)
+
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything, "team1", []string{"user1"}).
+					Return([]*entity.User{}, nil)
+
 				now := time.Now()
-				prRepo.On("CreatePR", mock.Anything, mock.Anything, []string{}).Return(nil)
-				prRepo.On("GetPR", mock.Anything, "pr1").Return(&entity.PullRequest{
-					PullRequestID:     "pr1",
-					PullRequestName:   "Test PR",
-					AuthorID:          "user1",
-					Status:            entity.OPEN,
-					AssignedReviewers: []string{},
-					CreatedAt:         &now,
-				}, nil)
+
+				prRepo.On("CreatePR",
+					mock.Anything, mock.Anything, []string{}).
+					Return(nil)
+
+				prRepo.On("GetPR", mock.Anything, "pr1").
+					Return(&entity.PullRequest{
+						PullRequestID:     "pr1",
+						PullRequestName:   "Test PR",
+						AuthorID:          "user1",
+						Status:            entity.OPEN,
+						AssignedReviewers: []string{},
+						CreatedAt:         &now,
+					}, nil)
 			},
 			expectedError: "",
 			expectedMsg:   "",
@@ -146,7 +178,9 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
 				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, nil)
 				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
 					UserID:   "user1",
@@ -154,6 +188,7 @@ func TestPRService_CreatePR(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
+
 				teamRepo.On("GetTeam", mock.Anything, "team1").Return(&entity.Team{
 					TeamName: "team1",
 					Members:  []entity.TeamMember{},
@@ -171,14 +206,16 @@ func TestPRService_CreatePR(t *testing.T) {
 			prID:     "pr1",
 			prName:   "Test PR",
 			authorID: "user1",
-			setupMocks: func(prRepo *MockPullRequestRepository, userRepo *MockUserRepository, teamRepo *MockTeamRepository) {
+			setupMocks: func(prRepo *MockPullRequestRepository,
+				userRepo *MockUserRepository,
+				teamRepo *MockTeamRepository) {
 				prRepo.On("PRExists", mock.Anything, "pr1").Return(false, nil)
-				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
-					UserID:   "user1",
+				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{UserID: "user1",
 					Username: "testuser",
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
+
 				teamRepo.On("GetTeam", mock.Anything, "team1").Return(&entity.Team{
 					TeamName: "team1",
 					Members:  []entity.TeamMember{},
@@ -426,15 +463,20 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 					AssignedReviewers: []string{"user2", "user3"},
 					CreatedAt:         &now,
 				}, nil).Once()
-				userRepo.On("GetUser", mock.Anything, "user2").Return(&entity.User{
-					UserID:   "user2",
-					Username: "user2",
-					TeamName: "team1",
-					IsActive: true,
-				}, nil)
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user1", "user2"}).Return([]*entity.User{
-					{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
-				}, nil)
+				userRepo.On("GetUser", mock.Anything, "user2").
+					Return(&entity.User{
+						UserID:   "user2",
+						Username: "user2",
+						TeamName: "team1",
+						IsActive: true,
+					}, nil)
+
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything, "team1", []string{"user1", "user2"}).
+					Return([]*entity.User{
+						{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
+					}, nil)
+
 				prRepo.On("UpdateReviewers", mock.Anything, "pr1", mock.Anything).Return(nil)
 				prRepo.On("GetPR", mock.Anything, "pr1").Return(&entity.PullRequest{
 					PullRequestID:     "pr1",
@@ -571,9 +613,12 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user1", "user2"}).Return([]*entity.User{
-					{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
-				}, nil)
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything, "team1", []string{"user1", "user2"}).
+					Return([]*entity.User{
+						{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
+					}, nil)
+
 				prRepo.On("UpdateReviewers", mock.Anything, "pr1", mock.Anything).Return(errors.New("db error"))
 			},
 			expectedError: "db error",
@@ -600,9 +645,12 @@ func TestPRService_ReassignReviewer(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil)
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user1", "user2"}).Return([]*entity.User{
-					{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
-				}, nil)
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything, "team1", []string{"user1", "user2"}).
+					Return([]*entity.User{
+						{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
+					}, nil)
+
 				prRepo.On("UpdateReviewers", mock.Anything, "pr1", mock.Anything).Return(nil)
 				prRepo.On("GetPR", mock.Anything, "pr1").Return(nil, errors.New("db error")).Once()
 			},
