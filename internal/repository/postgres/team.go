@@ -45,12 +45,13 @@ func (r *teamPGRepository) AddTeam(
 	}
 
 	if exists {
-		return errors.New("TEAM_EXISTS")
+		return errors.New(string(entity.CodeTeamExists))
 	}
 
 	_, err = tx.Exec(ctx,
 		`INSERT INTO teams (team_name) VALUES ($1)`,
-		team.TeamName)
+		team.TeamName,
+	)
 
 	if err != nil {
 		return err
@@ -80,14 +81,15 @@ func (r *teamPGRepository) GetTeam(
 	var exists bool
 
 	err := r.db.Pool.QueryRow(ctx,
-		//nolint:revive // sql query
-		`SELECT EXISTS(SELECT 1 FROM teams WHERE team_name = $1)`, teamName).Scan(&exists)
+
+		`SELECT EXISTS(SELECT 1 FROM teams WHERE team_name = $1)`, teamName).
+		Scan(&exists)
 	if err != nil {
 		return nil, err
 	}
 
 	if !exists {
-		return nil, errors.New("NOT_FOUND")
+		return nil, errors.New(string(entity.CodeNotFound))
 	}
 
 	rows, err := r.db.Pool.Query(ctx,
@@ -95,13 +97,14 @@ func (r *teamPGRepository) GetTeam(
 		 FROM users
 		 WHERE team_name = $1
 		 ORDER BY user_id`,
-		teamName)
+		teamName,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	members := []entity.TeamMember{}
+	var members []entity.TeamMember
 
 	for rows.Next() {
 		var member entity.TeamMember

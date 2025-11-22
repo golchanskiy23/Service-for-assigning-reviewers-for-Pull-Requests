@@ -4,8 +4,14 @@ import (
 	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
+
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
+)
+
+const (
+	initialReviewerCap = 0
 )
 
 type UserRepository interface {
@@ -16,11 +22,9 @@ type UserRepository interface {
 		teamName string,
 		exclude []string,
 	) ([]*entity.User, error)
-	//nolint:revive // func
+	//nolint:revive // monolith func
 	GetPRsForReviewer(ctx context.Context, userID string) ([]*entity.PullRequestShort, error)
-	// MassDeactivateAndReassign deactivates given users (must belong to the same team)
-	// and for every OPEN PR where they are reviewers removes them and tries
-	// to reassign at least one active reviewer from the same team.
+	//nolint:revive // monolith func
 	MassDeactivateAndReassign(ctx context.Context, teamName string, userIDs []string) error
 }
 
@@ -40,17 +44,11 @@ func (r *userPGRepository) GetUser(
 
 	err := r.db.Pool.QueryRow(ctx,
 		`SELECT user_id, username, team_name, is_active
-		 FROM users
-		 WHERE user_id = $1`,
+		 FROM users WHERE user_id = $1`,
 		userID,
-	).Scan(
-		&user.UserID,
-		&user.Username,
-		&user.TeamName,
-		&user.IsActive,
-	)
+	).Scan(&user.UserID, &user.Username, &user.TeamName, &user.IsActive)
 	if err != nil {
-		return nil, errors.New("NOT_FOUND")
+		return nil, errors.New(string(entity.CodeNotFound))
 	}
 
 	return &user, nil
@@ -62,14 +60,15 @@ func (r *userPGRepository) SetIsActive(
 	active bool,
 ) error {
 	result, err := r.db.Pool.Exec(ctx,
-		`UPDATE users SET is_active = $1 WHERE user_id = $2`, active, userID)
+		`UPDATE users SET is_active = $1 WHERE user_id = $2`, active, userID,
+	)
 	if err != nil {
 		return err
 	}
 
 	const noRowsAffected = 0
 	if result.RowsAffected() == noRowsAffected {
-		return errors.New("NOT_FOUND")
+		return errors.New(string(entity.CodeNotFound))
 	}
 
 	return nil
@@ -80,15 +79,21 @@ func (r *userPGRepository) GetActiveUsersByTeam(
 	teamName string,
 	exclude []string,
 ) ([]*entity.User, error) {
-	query := `SELECT user_id, username, team_name, is_active
-			  FROM users
-			  WHERE team_name = $1 AND is_active = TRUE`
+	query := `
+    	SELECT
+        	user_id,
+        	username,
+        	team_name,
+        	is_active
+    	FROM users
+    	WHERE team_name = $1
+      		AND is_active = TRUE
+	`
 	args := []interface{}{teamName}
 
 	const emptySlice = 0
 	if len(exclude) > emptySlice {
 		query += ` AND NOT (user_id = ANY($2::text[]))`
-
 		args = append(args, exclude)
 	}
 
@@ -153,7 +158,7 @@ func (r *userPGRepository) GetPRsForReviewer(
 	return prs, nil
 }
 
-// MassDeactivateAndReassign implements bulk deactivation and safe reassignment.
+//nolint:revive // to heavy for coordination func
 func (r *userPGRepository) MassDeactivateAndReassign(
 	ctx context.Context,
 	teamName string,
@@ -166,76 +171,148 @@ func (r *userPGRepository) MassDeactivateAndReassign(
 	//nolint:errcheck // best-effort
 	defer tx.Rollback(ctx)
 
-	// Deactivate provided users (scoped to team for safety)
-	if _, err := tx.Exec(ctx,
-		`UPDATE users SET is_active = FALSE WHERE user_id = ANY($1::text[]) AND team_name = $2`,
-		userIDs, teamName); err != nil {
-		return err
+	if e := r.deactivateUsers(ctx, tx, teamName, userIDs); e != nil {
+		return e
 	}
 
-	// Find affected OPEN PRs that had any of these users as reviewers and get current reviewer list
-	rows, err := tx.Query(ctx,
-		`SELECT pr.pull_request_id, array_agg(prr.reviewer_id ORDER BY prr.assigned_at)
-		 FROM pr_reviewers prr
-		 JOIN pull_requests pr ON pr.pull_request_id = prr.pull_request_id
-		 WHERE pr.status = 'OPEN' AND prr.reviewer_id = ANY($1::text[])
-		 GROUP BY pr.pull_request_id`,
-		userIDs,
-	)
+	prs, err := r.fetchAffectedPRs(ctx, tx, userIDs)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var prID string
-		var reviewers []string
-		if err := rows.Scan(&prID, &reviewers); err != nil {
+	for _, pr := range prs {
+		remaining := filterRemainingReviewers(pr.Reviewers, userIDs)
+
+		if err := r.removeReviewersFromPR(ctx, tx, pr.ID, userIDs); err != nil {
 			return err
 		}
 
-		// Build remaining reviewers by excluding deactivated ones
-		remaining := make([]string, 0, len(reviewers))
-		for _, rID := range reviewers {
-			skip := false
-			for _, d := range userIDs {
-				if rID == d {
-					skip = true
-					break
-				}
-			}
-			if !skip {
-				remaining = append(remaining, rID)
-			}
-		}
-
-		// Delete entries for deactivated users for this PR
-		if _, err := tx.Exec(ctx,
-			`DELETE FROM pr_reviewers WHERE pull_request_id = $1 AND reviewer_id = ANY($2::text[])`,
-			prID, userIDs); err != nil {
-			return err
-		}
-
-		// If no remaining reviewers, try to add one active team member
 		if len(remaining) == 0 {
-			// find one active candidate in the same team (exclude deactivated list)
-			var candidate string
-			err := tx.QueryRow(ctx,
-				`SELECT user_id FROM users
-				 WHERE team_name = $1 AND is_active = TRUE AND NOT (user_id = ANY($2::text[]))
-				 LIMIT 1`,
-				teamName, userIDs).Scan(&candidate)
-
-			if err == nil && candidate != "" {
-				if _, err := tx.Exec(ctx,
-					`INSERT INTO pr_reviewers (pull_request_id, reviewer_id) VALUES ($1, $2)`,
-					prID, candidate); err != nil {
-					return err
-				}
+			if err := r.assignFallbackReviewer(ctx,
+				tx,
+				pr.ID,
+				teamName,
+				userIDs); err != nil {
+				return err
 			}
-			// if no candidate found, leave PR without reviewers — caller may handle this
 		}
 	}
 
 	return tx.Commit(ctx)
+}
+
+//nolint:revive // useless linter here
+func (r *userPGRepository) deactivateUsers(
+	ctx context.Context,
+	tx pgx.Tx,
+	teamName string,
+	userIDs []string,
+) error {
+	_, err := tx.Exec(ctx,
+		`UPDATE users
+         SET is_active = FALSE
+         WHERE user_id = ANY($1::text[]) AND team_name = $2`,
+		userIDs, teamName,
+	)
+	return err
+}
+
+// PRInfo stores PR ID and current reviewers.
+type PRInfo struct {
+	ID        string
+	Reviewers []string
+}
+
+//nolint:revive // useless linter here
+func (r *userPGRepository) fetchAffectedPRs(
+	ctx context.Context,
+	tx pgx.Tx,
+	userIDs []string,
+) ([]PRInfo, error) {
+	rows, err := tx.Query(ctx,
+		`SELECT pr.pull_request_id,
+                array_agg(prr.reviewer_id ORDER BY prr.assigned_at)
+         FROM pr_reviewers prr
+         JOIN pull_requests pr ON pr.pull_request_id = prr.pull_request_id
+         WHERE pr.status = 'OPEN'
+           AND prr.reviewer_id = ANY($1::text[])
+         GROUP BY pr.pull_request_id`,
+		userIDs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []PRInfo
+	for rows.Next() {
+		var pr PRInfo
+		if err := rows.Scan(&pr.ID, &pr.Reviewers); err != nil {
+			return nil, err
+		}
+		result = append(result, pr)
+	}
+	return result, rows.Err()
+}
+
+func filterRemainingReviewers(reviewers, disabled []string) []string {
+	disabledSet := make(map[string]struct{}, len(disabled))
+	for _, id := range disabled {
+		disabledSet[id] = struct{}{}
+	}
+
+	res := make([]string, initialReviewerCap, len(reviewers))
+	for _, rID := range reviewers {
+		if _, skip := disabledSet[rID]; !skip {
+			res = append(res, rID)
+		}
+	}
+	return res
+}
+
+//nolint:revive // useless linter here
+func (r *userPGRepository) removeReviewersFromPR(
+	ctx context.Context,
+	tx pgx.Tx,
+	prID string,
+	userIDs []string,
+) error {
+	_, err := tx.Exec(ctx,
+		`DELETE FROM pr_reviewers
+         WHERE pull_request_id = $1
+           AND reviewer_id = ANY($2::text[])`,
+		prID, userIDs,
+	)
+	return err
+}
+
+//nolint:revive // useless linter here
+func (r *userPGRepository) assignFallbackReviewer(
+	ctx context.Context,
+	tx pgx.Tx,
+	prID string,
+	teamName string,
+	excluded []string,
+) error {
+	var candidate string
+	err := tx.QueryRow(ctx,
+		`SELECT user_id
+         FROM users
+         WHERE team_name = $1
+           AND is_active = TRUE
+           AND NOT (user_id = ANY($2::text[]))
+         LIMIT 1`,
+		teamName, excluded,
+	).Scan(&candidate)
+
+	if err != nil || candidate == "" {
+		return err
+	}
+
+	_, err = tx.Exec(ctx,
+		`INSERT INTO pr_reviewers (pull_request_id, reviewer_id)
+         VALUES ($1, $2)`,
+		prID, candidate,
+	)
+	return err
 }

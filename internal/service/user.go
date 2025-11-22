@@ -15,6 +15,7 @@ const (
 	userGetPRsQueryTimeout = 250 * time.Millisecond
 	maxPRsToProcess        = 5
 	reassignTimeout        = 100 * time.Millisecond
+	Empty                  = 0
 )
 
 type UserService struct {
@@ -24,8 +25,10 @@ type UserService struct {
 	prService *PRService
 }
 
-//nolint:lll,revive // func
-func NewUserService(repo postgres.UserRepository, prRepo postgres.PullRequestRepository, teamRepo postgres.TeamRepository, prService *PRService) *UserService {
+func NewUserService(repo postgres.UserRepository,
+	prRepo postgres.PullRequestRepository,
+	teamRepo postgres.TeamRepository,
+	prService *PRService) *UserService {
 	return &UserService{
 		repo:      repo,
 		prRepo:    prRepo,
@@ -35,12 +38,13 @@ func NewUserService(repo postgres.UserRepository, prRepo postgres.PullRequestRep
 }
 
 //nolint:gocognit,nestif,revive,cyclop // Complex business logic for user activation status change
-func (s *UserService) ChangeStatus(ctx context.Context, userID string, isActive bool) (*entity.User, error) {
+func (s *UserService) ChangeStatus(ctx context.Context,
+	userID string, isActive bool) (*entity.User, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, userQueryTimeout)
 	defer cancel()
 
-	user, err := s.repo.GetUser(queryCtx, userID)
-	if err != nil {
+	user, e := s.repo.GetUser(queryCtx, userID)
+	if e != nil {
 		return nil, errors.New("NOT_FOUND")
 	}
 
@@ -81,7 +85,7 @@ func (s *UserService) ChangeStatus(ctx context.Context, userID string, isActive 
 		}
 	}
 
-	err = s.repo.SetIsActive(queryCtx, userID, isActive)
+	err := s.repo.SetIsActive(queryCtx, userID, isActive)
 	if err != nil {
 		return nil, err
 	}
@@ -115,62 +119,59 @@ func (s *UserService) GetPRsAssignedTo(
 	return userID, prs, nil
 }
 
-// MassDeactivateUsers deactivates multiple users from the same team and
-// triggers safe reassignment of their open PRs. All users must belong to the same team.
-// MassDeactivate deactivates multiple users (provided as entity.User slice)
-// and triggers safe reassignment for their open PRs. The provided flag must be false
-// (only deactivation supported here).
-func (s *UserService) MassDeactivate(ctx context.Context, users []entity.User, flag bool) error {
+//nolint:revive // unnecessary for changes func
+func (s *UserService) MassDeactivate(ctx context.Context,
+	users []entity.User,
+	flag bool) error {
+
 	if flag {
 		return errors.New("ONLY_DEACTIVATE")
 	}
 
-	if len(users) == 0 {
+	if len(users) == Empty {
 		return errors.New("EMPTY_REQUEST")
 	}
 
-	// Determine team: prefer TeamName on provided users; if missing, fetch from repo
-	team := users[0].TeamName
+	team := users[Empty].TeamName
 	queryCtx, cancel := context.WithTimeout(ctx, userQueryTimeout)
 	defer cancel()
 
 	if team == "" {
 		u, err := s.repo.GetUser(queryCtx, users[0].UserID)
 		if err != nil {
-			return errors.New("NOT_FOUND")
+			return errors.New(string(entity.CodeNotFound))
 		}
 		team = u.TeamName
 	}
 
-	userIDs := make([]string, 0, len(users))
+	userIDs := make([]string, Empty, len(users))
 	for _, u := range users {
 		if u.UserID == "" {
 			return errors.New("INVALID_USER")
 		}
 
-		// If TeamName provided, ensure same; otherwise fetch and validate
 		if u.TeamName != "" {
 			if u.TeamName != team {
-				return errors.New("DIFFERENT_TEAM")
+				return errors.New(string(entity.CodeUsersFromDifferentTeams))
 			}
 		} else {
 			uu, err := s.repo.GetUser(queryCtx, u.UserID)
 			if err != nil {
-				return errors.New("NOT_FOUND")
+				return errors.New(string(entity.CodeNotFound))
 			}
 			if uu.TeamName != team {
-				return errors.New("DIFFERENT_TEAM")
+				return errors.New(string(entity.CodeUsersFromDifferentTeams))
 			}
 		}
 
 		userIDs = append(userIDs, u.UserID)
 	}
 
-	// perform mass deactivate + reassign in repository (single transaction)
 	repoCtx, repoCancel := context.WithTimeout(ctx, reassignTimeout)
 	defer repoCancel()
 
-	if err := s.repo.MassDeactivateAndReassign(repoCtx, team, userIDs); err != nil {
+	err := s.repo.MassDeactivateAndReassign(repoCtx, team, userIDs)
+	if err != nil {
 		return err
 	}
 

@@ -19,7 +19,11 @@ func (m *MockStatsRepo) GetAssignedReviewersCountPerPR(ctx context.Context) (map
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(map[string]int), args.Error(1)
+	v, ok := args.Get(0).(map[string]int)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return v, args.Error(1)
 }
 
 func (m *MockStatsRepo) GetOpenPRCountPerUser(ctx context.Context) (map[string]int, error) {
@@ -27,11 +31,15 @@ func (m *MockStatsRepo) GetOpenPRCountPerUser(ctx context.Context) (map[string]i
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(map[string]int), args.Error(1)
+	v, ok := args.Get(0).(map[string]int)
+	if !ok {
+		return nil, args.Error(1)
+	}
+	return v, args.Error(1)
 }
 
 func TestStatsService_Getters(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	mockRepo := new(MockStatsRepo)
 
 	svc := NewStatsService(mockRepo)
@@ -58,7 +66,7 @@ func TestStatsService_Getters(t *testing.T) {
 }
 
 func TestStatsService_ErrorPropagation(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	mockRepo := new(MockStatsRepo)
 	svc := NewStatsService(mockRepo)
 

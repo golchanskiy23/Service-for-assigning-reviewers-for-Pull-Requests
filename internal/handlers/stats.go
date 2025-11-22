@@ -4,6 +4,9 @@ import (
 	"context"
 	"net/http"
 
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
+	"Service-for-assigning-reviewers-for-Pull-Requests/util"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -43,7 +46,10 @@ func (s *Services) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	userCounts, err := s.StatsService.GetOpenPRCountPerUser(ctx)
 	if err != nil {
-		http.Error(w, "failed to get user counts", http.StatusInternalServerError)
+		util.SendError(w,
+			http.StatusInternalServerError,
+			entity.CodePRCount,
+			"failed to get user counts")
 		return
 	}
 

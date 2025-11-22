@@ -23,6 +23,9 @@ var (
 )
 
 const (
+	CodeOnlyDeactivate          ErrorCode = "ONLY_DEACTIVATE"
+	CodeEmptyRequest            ErrorCode = "EMPTY_REQUEST"
+	CodePRCount                 ErrorCode = "PR_COUNT_ERROR"
 	CodeUsersFromDifferentTeams ErrorCode = "USERS_FROM_DIFFERENT_TEAMS"
 	CodeInvalidFileFormat       ErrorCode = "INVALID_FILE_FORMAT"
 	CodeTeamExists              ErrorCode = "TEAM_EXISTS"

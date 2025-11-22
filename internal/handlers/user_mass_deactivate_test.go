@@ -17,15 +17,29 @@ import (
 func TestServices_UserMassDeactivateHandler(t *testing.T) {
 	t.Run("successful deactivation", func(t *testing.T) {
 		userService := new(MockUserService)
-		// Expect MassDeactivate called with mapped entity.Users
-		userService.On("MassDeactivate", mock.Anything, []entity.User{{UserID: "u1", Username: "Alice", TeamName: "backend", IsActive: true}, {UserID: "u2", Username: "Bob", TeamName: "backend", IsActive: false}}, false).Return(nil)
+		userService.On("MassDeactivate",
+			mock.Anything,
+			[]entity.User{{UserID: "u1",
+				Username: "Alice",
+				TeamName: "backend",
+				IsActive: true},
+				{UserID: "u2",
+					Username: "Bob",
+					TeamName: "backend",
+					IsActive: false}}, false).Return(nil)
 
 		services := &Services{UserService: userService}
 
 		reqBody := map[string]interface{}{
 			"users": []map[string]interface{}{
-				{"user_id": "u1", "username": "Alice", "team_name": "backend", "is_active": true},
-				{"user_id": "u2", "username": "Bob", "team_name": "backend", "is_active": false},
+				{"user_id": "u1",
+					"username":  "Alice",
+					"team_name": "backend",
+					"is_active": true},
+				{"user_id": "u2",
+					"username":  "Bob",
+					"team_name": "backend",
+					"is_active": false},
 			},
 			"flag": false,
 		}
@@ -64,7 +78,9 @@ func TestServices_UserMassDeactivateHandler(t *testing.T) {
 		userService := new(MockUserService)
 		services := &Services{UserService: userService}
 
-		reqBody := map[string]interface{}{"users": []map[string]interface{}{{"user_id": "u1", "team_name": "backend"}}, "flag": true}
+		reqBody := map[string]interface{}{
+			"users": []map[string]interface{}{
+				{"user_id": "u1", "team_name": "backend"}}, "flag": true}
 		b, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/users/deactivate", bytes.NewBuffer(b))
 		w := httptest.NewRecorder()
@@ -80,7 +96,9 @@ func TestServices_UserMassDeactivateHandler(t *testing.T) {
 
 		services := &Services{UserService: userService}
 
-		reqBody := map[string]interface{}{"users": []map[string]interface{}{{"user_id": "u1", "team_name": "backend"}}, "flag": false}
+		reqBody := map[string]interface{}{
+			"users": []map[string]interface{}{
+				{"user_id": "u1", "team_name": "backend"}}, "flag": false}
 		b, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest(http.MethodPost, "/users/deactivate", bytes.NewBuffer(b))
 		w := httptest.NewRecorder()

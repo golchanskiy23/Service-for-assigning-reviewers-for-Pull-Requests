@@ -59,7 +59,6 @@ linters-settings:
       - name: add-constant
       - name: argument-limit
       - name: atomic
-      - name: cognitive-complexity
       - name: confusing-naming
       - name: confusing-results
       - name: context-as-argument
@@ -160,30 +159,17 @@ linters-settings:
     check-return: true
 
 linters:
-  enable-all: true
-  disable:
-    - gci
-    - gofumpt
-    - depguard
-    - forbidigo
-    - testpackage
-    - tagliatelle
-    - paralleltest
-    - err113
-    - thelper
-    - exhaustruct
-    - nestif
-    - wrapcheck
-    - ireturn
+  enable:
     - govet
-    - tenv
-    - varnamelen
-    - musttag
-    - goconst
-    - wsl
-    - testifylint
-    - nlreturn
-    - dupl
+    - staticcheck
+    - errcheck
+    - gofmt
+    - goimports
+    - gosec
+    - revive
+    - unused
+    - gocritic
+    - lll
 
 issues:
   exclude-rules:

@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
+	Server   HTTPServer `mapstructure:"server"`
 	App      App        `mapstructure:"app"`
 	Database DB         `mapstructure:"database"`
-	Server   HTTPServer `mapstructure:"server"`
 }
 
 type App struct {
@@ -30,10 +30,10 @@ type DB struct {
 }
 
 type HTTPServer struct {
-	Addr            string         `mapstructure:"addr"`
 	ReadTimeout     *time.Duration `mapstructure:"read_timeout"`
-	ShutdownTimeout time.Duration  `mapstructure:"shutdown_timeout"`
 	WriteTimeout    *time.Duration `mapstructure:"write_timeout"`
+	Addr            string         `mapstructure:"addr"`
+	ShutdownTimeout time.Duration  `mapstructure:"shutdown_timeout"`
 }
 
 type Mode string

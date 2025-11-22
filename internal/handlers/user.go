@@ -8,6 +8,10 @@ import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/util"
 )
 
+const (
+	Zero = 0
+)
+
 type UserSetIsActiveRequest struct {
 	UserID   string `json:"user_id"`
 	IsActive bool   `json:"is_active"`
@@ -22,16 +26,9 @@ type UserGetReviewResponse struct {
 	PullRequests []entity.PullRequestShort `json:"pull_requests"`
 }
 
-type UserItem struct {
-	UserID   string `json:"user_id"`
-	Username string `json:"username"`
-	TeamName string `json:"team_name"`
-	IsActive bool   `json:"is_active"`
-}
-
 type UserMassChangeRequest struct {
-	Users []UserItem `json:"users"`
-	Flag  bool       `json:"flag"`
+	Users []entity.UserItem `json:"users"`
+	Flag  bool              `json:"flag"`
 }
 
 type UserMassChangeResponse struct {
@@ -150,62 +147,77 @@ func (s *Services) UserGetReviewHandler(
 	}
 }
 
-// UserBulkDeactivateHandler accepts a JSON array of {user_id, is_active:false}
-// All users must belong to the same team; if any item requests is_active==true
-// or users from different teams are provided, handler responds with error.
+//nolint:revive // easy for reading function
 func (s *Services) UsersMassDeactivateHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
 	var req UserMassChangeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
+		util.SendError(w,
+			http.StatusBadRequest,
+			entity.CodeNotFound,
+			"invalid json")
 		return
 	}
 
-	if len(req.Users) == 0 {
-		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "empty request")
+	if len(req.Users) == Zero {
+		util.SendError(w,
+			http.StatusBadRequest,
+			entity.CodeNotFound,
+			"empty request")
 		return
 	}
 
 	if req.Flag {
-		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "only deactivation supported (flag must be false)")
+		util.SendError(w,
+			http.StatusBadRequest,
+			entity.CodeNotFound,
+			"only deactivation supported (flag must be false)")
 		return
 	}
 
-	// Map decoded request items to entity.User before calling service
 	users := make([]entity.User, 0, len(req.Users))
 	for _, u := range req.Users {
-		users = append(users, entity.User{
-			UserID:   u.UserID,
-			Username: u.Username,
-			TeamName: u.TeamName,
-			IsActive: u.IsActive,
-		})
+		users = append(users, entity.User(u))
 	}
 
 	ctx := r.Context()
 	if err := s.UserService.MassDeactivate(ctx, users, req.Flag); err != nil {
 		switch err.Error() {
-		case "NOT_FOUND":
-			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
+		case string(entity.CodeNotFound):
+			util.SendError(w,
+				http.StatusNotFound,
+				entity.CodeNotFound,
+				"user not found")
 			return
-		case "DIFFERENT_TEAM":
-			util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "users belong to different teams")
+		case string(entity.CodeUsersFromDifferentTeams):
+			util.SendError(w,
+				http.StatusBadRequest,
+				entity.CodeNotFound,
+				"users belong to different teams")
 			return
-		case "EMPTY_REQUEST":
-			util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "empty request")
+		case string(entity.CodeEmptyRequest):
+			util.SendError(w,
+				http.StatusBadRequest,
+				entity.CodeNotFound,
+				"empty request")
 			return
-		case "ONLY_DEACTIVATE":
-			util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "only deactivation supported")
+		case string(entity.CodeOnlyDeactivate):
+			util.SendError(w,
+				http.StatusBadRequest,
+				entity.CodeNotFound,
+				"only deactivation supported")
 			return
 		default:
-			util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
+			util.SendError(w,
+				http.StatusInternalServerError,
+				entity.CodeNotFound,
+				err.Error())
 			return
 		}
 	}
 
-	// Build deactivated ids list from request
 	userIDs := make([]string, 0, len(req.Users))
 	for _, u := range req.Users {
 		userIDs = append(userIDs, u.UserID)

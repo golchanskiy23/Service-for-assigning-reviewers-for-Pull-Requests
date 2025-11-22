@@ -108,13 +108,10 @@ func StartServer(
 		SetAddr(cfg.Server.Addr),
 		SetShutdownTimeout(cfg.Server.ShutdownTimeout),
 	)
-	//nolint:revive // Debug output, line length is acceptable
-	fmt.Println(
-		customServer.internalServer.ReadTimeout,
-		customServer.internalServer.WriteTimeout,
-		customServer.internalServer.Addr,
-		customServer.shutdownTimeout,
+	logger.Info("server shutdown info",
+		"shutdownTimeout", customServer.shutdownTimeout,
 	)
+	logger.Info("")
 	logger.Info("successfully created server\n")
 
 	return customServer

@@ -48,7 +48,7 @@ func TestMetricsHandler_ServesMetrics(t *testing.T) {
 
 	services := &Services{StatsService: svc}
 
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
 	w := httptest.NewRecorder()
 
 	services.MetricsHandler(w, req)
@@ -76,7 +76,7 @@ func TestMetricsHandler_ErrorPaths(t *testing.T) {
 
 		services := &Services{StatsService: svc}
 
-		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
 		w := httptest.NewRecorder()
 
 		services.MetricsHandler(w, req)
@@ -96,7 +96,7 @@ func TestMetricsHandler_ErrorPaths(t *testing.T) {
 
 		services := &Services{StatsService: svc}
 
-		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
 		w := httptest.NewRecorder()
 
 		services.MetricsHandler(w, req)

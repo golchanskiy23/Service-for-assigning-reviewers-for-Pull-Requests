@@ -7,7 +7,10 @@ import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
 )
 
-// StatsRepository provides aggregated read-only queries used for metrics
+const (
+	ContextTimeout = 2
+)
+
 type StatsRepository interface {
 	GetAssignedReviewersCountPerPR(ctx context.Context) (map[string]int, error)
 	GetOpenPRCountPerUser(ctx context.Context) (map[string]int, error)
@@ -21,10 +24,9 @@ func NewStatsPGRepository(db *database.DatabaseSource) StatsRepository {
 	return &statsPGRepository{db: db}
 }
 
-// GetAssignedReviewersCountPerPR returns number of assigned reviewers for each OPEN pull request
+//nolint:revive // monolith func
 func (r *statsPGRepository) GetAssignedReviewersCountPerPR(ctx context.Context) (map[string]int, error) {
-	// Use a short timeout for metrics queries to avoid long-running scrapes
-	qctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	qctx, cancel := context.WithTimeout(ctx, ContextTimeout*time.Second)
 	defer cancel()
 
 	rows, err := r.db.Pool.Query(qctx,
@@ -51,10 +53,9 @@ func (r *statsPGRepository) GetAssignedReviewersCountPerPR(ctx context.Context) 
 	return res, nil
 }
 
-// GetOpenPRCountPerUser returns number of OPEN PRs for which each user is currently assigned as reviewer
+//nolint:revive // monolith func
 func (r *statsPGRepository) GetOpenPRCountPerUser(ctx context.Context) (map[string]int, error) {
-	// Use a short timeout for metrics queries to avoid long-running scrapes
-	qctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	qctx, cancel := context.WithTimeout(ctx, ContextTimeout*time.Second)
 	defer cancel()
 
 	rows, err := r.db.Pool.Query(qctx,

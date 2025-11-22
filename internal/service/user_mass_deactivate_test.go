@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 )
 
 func TestUserService_MassDeactivate(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// set up mocks
 	userRepo := new(MockUserRepository)

@@ -148,8 +148,8 @@ func (s *PRService) ReassignReviewer(
 
 	defer cancel()
 
-	pr, err := s.repo.GetPR(queryCtx, prID)
-	if err != nil {
+	pr, e := s.repo.GetPR(queryCtx, prID)
+	if e != nil {
 		return nil, emptyString, errors.New("NOT_FOUND")
 	}
 
@@ -194,7 +194,7 @@ func (s *PRService) ReassignReviewer(
 			}
 
 			selected := make([]string, 0, pick)
-			for i := 0; i < pick; i++ {
+			for i := range pick {
 				selected = append(selected, shuffled[i].UserID)
 			}
 
@@ -203,8 +203,8 @@ func (s *PRService) ReassignReviewer(
 				return nil, emptyString, err
 			}
 
-			updatedPR, err := s.repo.GetPR(queryCtx, prID)
-			if err != nil {
+			updatedPR, error1 := s.repo.GetPR(queryCtx, prID)
+			if error1 != nil {
 				return nil, emptyString, err
 			}
 

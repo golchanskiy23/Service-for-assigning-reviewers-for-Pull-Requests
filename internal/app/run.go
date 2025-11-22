@@ -41,7 +41,7 @@ func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
 		opts...,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init postgres: %w", err)
+		return nil, fmt.Errorf("failed to create internal storage: %w", err)
 	}
 
 	if err = db.Pool.Ping(context.Background()); err != nil {

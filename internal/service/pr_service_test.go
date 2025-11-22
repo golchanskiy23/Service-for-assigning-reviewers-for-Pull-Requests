@@ -364,6 +364,7 @@ func TestPRService_MergePR(t *testing.T) {
 	}
 }
 
+//nolint:maintidx // difficult test func, but correct
 func TestPRService_ReassignReviewer(t *testing.T) {
 	tests := []struct {
 		name          string

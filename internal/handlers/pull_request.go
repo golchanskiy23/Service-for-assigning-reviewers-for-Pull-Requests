@@ -33,8 +33,8 @@ type PRReassignRequest struct {
 }
 
 type PRReassignResponse struct {
-	PR         entity.PullRequest `json:"pr"`
 	ReplacedBy string             `json:"replaced_by"`
+	PR         entity.PullRequest `json:"pr"`
 }
 
 type PRMergeRequest struct {

@@ -27,9 +27,8 @@ type prPGRepository struct {
 	db *database.DatabaseSource
 }
 
-func NewPullRequestPGRepository(
-	db *database.DatabaseSource,
-) PullRequestRepository {
+//nolint:revive // idiomatic constructor sight
+func NewPullRequestPGRepository(db *database.DatabaseSource) PullRequestRepository {
 	return &prPGRepository{db: db}
 }
 
@@ -62,8 +61,9 @@ func (r *prPGRepository) CreatePR(
 
 	_, err = tx.Exec(
 		ctx,
-		//nolint:revive // sql query
-		`INSERT INTO pull_requests (pull_request_id, pull_request_name, author_id, status)
+		`INSERT INTO pull_requests (pull_request_id, 
+                           pull_request_name, 
+                           author_id, status)
 		 VALUES ($1, $2, $3, $4)`,
 		pr.PullRequestID,
 		pr.PullRequestName,
@@ -108,7 +108,7 @@ func (r *prPGRepository) GetPR(
 		&pr.MergedAt,
 	)
 	if err != nil {
-		return nil, errors.New("NOT_FOUND")
+		return nil, errors.New(string(entity.CodeNotFound))
 	}
 
 	rows, err := r.db.Pool.Query(ctx,
