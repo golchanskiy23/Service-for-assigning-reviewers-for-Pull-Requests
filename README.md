@@ -1,7 +1,7 @@
 ## Service for assigning reviewers for Pull Requests
 ## Инструкция по запуску
 
-**Необходимое**: `docker compose`, `git`, `make`, `go 1.24+`, `golangci-lint`
+**Необходимые инструменты**: `docker compose`, `git`, `make`, `go 1.24+`, `golangci-lint`
 
 - Клонирование репозитория
 ```bash
@@ -66,7 +66,7 @@ make start
         "is_active": false
       }
     ],
-    "flag": true
+    "flag": false
   }
   ```
 
