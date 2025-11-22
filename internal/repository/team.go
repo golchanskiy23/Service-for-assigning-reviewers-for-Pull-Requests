@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"database/sql"
 )
 
@@ -13,6 +12,7 @@ func NewTeamRepo(db *sql.DB) *TeamRepo {
 	return &TeamRepo{db: db}
 }
 
+/*
 func (r *TeamRepo) CreateTeam(name string, users []entity.User) (*entity.Team, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -58,4 +58,4 @@ func (r *TeamRepo) GetTeam(name string) (*entity.Team, error) {
 		return nil, err
 	}
 	return &t, nil
-}
+}*/

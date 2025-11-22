@@ -1,8 +1,6 @@
 package server
 
 import (
-	handlers "Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/service"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
@@ -13,6 +11,7 @@ type HTTPServer struct {
 	r    *chi.Mux
 }
 
+/*
 func NewHTTPServer(addr string) *HTTPServer {
 	execution := &handlers.ServiceExecution{
 		TeamService: &service.TeamService{},
@@ -25,7 +24,7 @@ func NewHTTPServer(addr string) *HTTPServer {
 		addr: addr,
 		r:    r,
 	}
-}
+}*/
 
 func (s *HTTPServer) Run() {
 	log.Println("Starting server on", s.addr)

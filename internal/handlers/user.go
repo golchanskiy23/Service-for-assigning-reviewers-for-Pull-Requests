@@ -1,16 +1,11 @@
 package handlers
 
-import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/util"
-	"encoding/json"
-	"net/http"
-)
-
 type UserSetIsActiveRequest struct {
 	UserID   int  `json:"userId"`
 	IsActive bool `json:"isActive"`
 }
 
+/*
 func (service *ServiceExecution) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
 	var req UserSetIsActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -42,3 +37,4 @@ func (service *ServiceExecution) UserGetReviewHandler(w http.ResponseWriter, r *
 
 	util.RespondJSON(w, http.StatusOK, reviews)
 }
+*/

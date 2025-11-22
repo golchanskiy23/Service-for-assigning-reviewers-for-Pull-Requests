@@ -1,11 +1,5 @@
 package service
 
-import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"errors"
-	"math/rand"
-)
-
 type PRService struct {
 	repo     PRRepository
 	userRepo UserRepository
@@ -20,6 +14,7 @@ func NewPRService(r PRRepository, u UserRepository, t TeamRepository) *PRService
 	}
 }
 
+/*
 func (s *PRService) CreatePR(pr *entity.PullRequest) (*entity.PullRequest, error) {
 	team, err := s.teamRepo.GetTeam(pr.TeamName)
 	if err != nil {
@@ -117,3 +112,4 @@ func (s *PRService) ReassignReviewer(prID, oldReviewerID int64) (*entity.PullReq
 
 	return pr, newReviewer.ID, s.repo.UpdatePR(pr)
 }
+*/
