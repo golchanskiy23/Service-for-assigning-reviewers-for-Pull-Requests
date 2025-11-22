@@ -118,11 +118,22 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 					TeamName: "team1",
 					IsActive: true,
 				}, nil).Once()
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user2", "user1"}).Return([]*entity.User{
-					{UserID: "user3", Username: "user3", TeamName: "team1", IsActive: true},
-				}, nil)
-				prRepo.On("UpdateReviewers", mock.Anything, "pr1", mock.Anything).Return(nil)
-				prRepo.On("GetPR", mock.Anything, "pr1").Return(&entity.PullRequest{
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything,
+					"team1",
+					[]string{"user2", "user1"}).
+					Return([]*entity.User{
+						{UserID: "user3", Username: "user3",
+							TeamName: "team1", IsActive: true,
+						},
+					}, nil)
+
+				prRepo.On("UpdateReviewers",
+					mock.Anything, "pr1", mock.Anything).
+					Return(nil)
+
+				prRepo.On("GetPR",
+					mock.Anything, "pr1").Return(&entity.PullRequest{
 					PullRequestID:     "pr1",
 					PullRequestName:   "Test PR 1",
 					AuthorID:          "user2",
@@ -130,23 +141,31 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 					AssignedReviewers: []string{"user3"},
 					CreatedAt:         &now,
 				}, nil).Once()
-				prRepo.On("GetPR", mock.Anything, "pr2").Return(&entity.PullRequest{
-					PullRequestID:     "pr2",
-					PullRequestName:   "Test PR 2",
-					AuthorID:          "user2",
-					Status:            entity.OPEN,
-					AssignedReviewers: []string{"user1"},
-					CreatedAt:         &now,
-				}, nil).Once()
-				userRepo.On("GetUser", mock.Anything, "user1").Return(&entity.User{
-					UserID:   "user1",
-					Username: "testuser",
-					TeamName: "team1",
-					IsActive: true,
-				}, nil).Once()
-				userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user2", "user1"}).Return([]*entity.User{
-					{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
-				}, nil)
+
+				prRepo.On("GetPR", mock.Anything, "pr2").
+					Return(&entity.PullRequest{
+						PullRequestID:     "pr2",
+						PullRequestName:   "Test PR 2",
+						AuthorID:          "user2",
+						Status:            entity.OPEN,
+						AssignedReviewers: []string{"user1"},
+						CreatedAt:         &now,
+					}, nil).Once()
+
+				userRepo.On("GetUser", mock.Anything, "user1").
+					Return(&entity.User{
+						UserID:   "user1",
+						Username: "testuser",
+						TeamName: "team1",
+						IsActive: true,
+					}, nil).Once()
+
+				userRepo.On("GetActiveUsersByTeam",
+					mock.Anything, "team1", []string{"user2", "user1"}).
+					Return([]*entity.User{
+						{UserID: "user4", Username: "user4", TeamName: "team1", IsActive: true},
+					}, nil)
+
 				prRepo.On("UpdateReviewers", mock.Anything, "pr2", mock.Anything).Return(nil)
 				prRepo.On("GetPR", mock.Anything, "pr2").Return(&entity.PullRequest{
 					PullRequestID:     "pr2",
@@ -355,9 +374,12 @@ func TestUserService_ChangeActivateStatus(t *testing.T) {
 						TeamName: "team1",
 						IsActive: true,
 					}, nil).Once()
-					userRepo.On("GetActiveUsersByTeam", mock.Anything, "team1", []string{"user2", "user1"}).Return([]*entity.User{
-						{UserID: "user3", Username: "user3", TeamName: "team1", IsActive: true},
-					}, nil).Once()
+					userRepo.On("GetActiveUsersByTeam",
+						mock.Anything, "team1", []string{"user2", "user1"}).
+						Return([]*entity.User{
+							{UserID: "user3", Username: "user3", TeamName: "team1", IsActive: true},
+						}, nil).Once()
+
 					prRepo.On("UpdateReviewers", mock.Anything, prID, mock.Anything).Return(nil).Once()
 					prRepo.On("GetPR", mock.Anything, prID).Return(&entity.PullRequest{
 						PullRequestID:     prID,

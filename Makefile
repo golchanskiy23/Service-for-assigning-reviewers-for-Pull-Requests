@@ -31,7 +31,7 @@ docker-up:
 
 lint:
 	@echo "$(YELLOW)Running linters...$(NC)"
-	@$(GOLANGCI_LINT) run --timeout 5m
+	@$(GOLANGCI_LINT) run --timeout 5m --fix
 	@echo "$(GREEN)✓ Successful linter execution$(NC)"
 
 unit-test:
