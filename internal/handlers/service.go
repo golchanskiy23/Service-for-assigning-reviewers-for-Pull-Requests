@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	vegeta "github.com/tsenart/vegeta/v12/lib"
+	"time"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	//nolint:revive // dependency
@@ -51,10 +53,15 @@ type TeamServiceInterface interface {
 	GetTeam(ctx context.Context, teamName string) (*entity.Team, error)
 }
 
+type LoadServiceInterface interface {
+	RunLoadTest(rate vegeta.Rate, duration time.Duration)
+}
+
 type Services struct {
 	TeamService  TeamServiceInterface
 	UserService  UserServiceInterface
 	PRService    PRServiceInterface
+	LoadService  LoadServiceInterface
 	StatsService *service.StatsService
 }
 

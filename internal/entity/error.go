@@ -1,7 +1,5 @@
 package entity
 
-import "errors"
-
 type ErrorResponse struct {
 	Error ErrorDetail `json:"error"`
 }
@@ -12,15 +10,6 @@ type ErrorDetail struct {
 }
 
 type ErrorCode string
-
-var (
-	ErrUsersFromDifferentTeams = errors.New("users_from_different_teams")
-	ErrNoActiveUsersLeft       = errors.New("no_active_users_left")
-	ErrUserNotFound            = errors.New("user_not_found")
-	ErrIncorrectRequest        = errors.New("incorrect_request")
-	ErrUnfamous                = errors.New("unfamous_error")
-	ErrTeamMismatch            = errors.New("team_mismatch")
-)
 
 const (
 	CodeOnlyDeactivate          ErrorCode = "ONLY_DEACTIVATE"

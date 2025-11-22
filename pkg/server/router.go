@@ -25,4 +25,5 @@ func RegisterRoutes(h *handlers.Services, r *chi.Mux) {
 	})
 
 	r.Get("/metrics", h.MetricsHandler)
+	r.Get("/loadtest", h.LoadTestHandler)
 }
