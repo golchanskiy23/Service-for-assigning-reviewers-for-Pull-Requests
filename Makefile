@@ -11,7 +11,7 @@ GOLANGCI_LINT := golangci-lint
 APP_NAME := Service-for-assigning-reviewers-for-Pull-Requests
 
 docker-up:
-	@echo "$(YELLOW)Starting PostgreSQL container...$(NC)"
+	@echo "$(YELLOW)Starting containers...$(NC)"
 	@$(DOCKER_COMPOSE) up -d --build
 	@echo "$(YELLOW)Waiting for database to be ready...$(NC)"
 	@timeout=30; \
@@ -34,10 +34,15 @@ lint:
 	@$(GOLANGCI_LINT) run --timeout 5m
 	@echo "$(GREEN)✓ Successful linter execution$(NC)"
 
-test:
-	@echo "$(YELLOW)Running tests in all directories...$(NC)"
-	@$(GO) test ./internal/service/... ./internal/handlers/... ./util/... -coverprofile=coverage.out && $(GO) tool cover -func=coverage.out
+unit-test:
+	@echo "$(YELLOW)Running unit tests...$(NC)"
+	@$(GO) test ./internal/service/... ./util/... -coverprofile=coverage.out && $(GO) tool cover -func=coverage.out
 	@echo "$(GREEN)✓ Successful tests execution - all tests passed$(NC)"
+
+integration-test:
+	@echo "$(YELLOW)Running integration tests...$(NC)"
+	@$(GO) test -v ./tests/integration
+	@echo "$(GREEN)✓ Successful integration tests execution - all tests passed$(NC)"
 
 run:
 	@echo "$(YELLOW)Starting application...$(NC)"
@@ -48,4 +53,4 @@ clean:
 	@echo "$(YELLOW)Stopping and removing containers...$(NC)"
 	@$(DOCKER_COMPOSE) down -v
 
-start: docker-up lint test run clean
+start: docker-up lint unit-test integration-test run clean
