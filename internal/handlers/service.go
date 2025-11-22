@@ -1,74 +1,28 @@
 package handlers
 
 import (
-	"context"
-	vegeta "github.com/tsenart/vegeta/v12/lib"
-	"time"
+	"log/slog"
 
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	//nolint:revive // dependency
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/service"
 )
 
-type PRServiceInterface interface {
-	CreatePR(
-		ctx context.Context,
-		prID, prName, authorID string,
-	) (
-		*entity.PullRequest,
-		string,
-		error,
-	)
-	MergePR(ctx context.Context, prID string) (*entity.PullRequest, error)
-	ReassignReviewer(
-		ctx context.Context,
-		prID, oldReviewerID string,
-	) (
-		*entity.PullRequest,
-		string,
-		error,
-	)
-}
-
-type UserServiceInterface interface {
-	ChangeStatus(
-		ctx context.Context,
-		userID string,
-		isActive bool,
-	) (*entity.User, error)
-	GetPRsAssignedTo(
-		ctx context.Context,
-		userID string,
-	) (
-		string,
-		[]*entity.PullRequestShort,
-		error,
-	)
-	MassDeactivate(ctx context.Context, users []entity.User, flag bool) error
-}
-
-type TeamServiceInterface interface {
-	AddTeam(ctx context.Context, team *entity.Team) (*entity.Team, error)
-	GetTeam(ctx context.Context, teamName string) (*entity.Team, error)
-}
-
-type LoadServiceInterface interface {
-	RunLoadTest(rate vegeta.Rate, duration time.Duration)
-}
-
 type Services struct {
+	Log          *slog.Logger
 	TeamService  TeamServiceInterface
 	UserService  UserServiceInterface
 	PRService    PRServiceInterface
 	LoadService  LoadServiceInterface
-	StatsService *service.StatsService
+	StatsService StatsServiceInterface
 }
 
-func CreateNewService(repo *postgres.Repository) *Services {
+//nolint:revive // long line
+func CreateNewService(repo *postgres.Repository, logger *slog.Logger) *Services {
 	prService := service.NewPRService(repo.PullRequests, repo.Users, repo.Teams)
 
 	return &Services{
+		Log:         logger,
 		TeamService: service.NewTeamService(repo.Teams),
 		UserService: service.NewUserService(
 			repo.Users,

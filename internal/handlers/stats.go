@@ -11,6 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const (
+	errFieldName = "error"
+)
+
 var (
 	assignedReviewersGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -40,15 +44,17 @@ func (s *Services) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	prCounts, err := s.StatsService.GetAssignedCountPerPR(ctx)
 	if err != nil {
+		s.Log.Error("failed to get PR counts", "error", err)
 		http.Error(w, "failed to get PR counts", http.StatusInternalServerError)
 		return
 	}
 
 	userCounts, err := s.StatsService.GetOpenPRCountPerUser(ctx)
 	if err != nil {
+		s.Log.Error("failed to get user counts", "error", err)
 		util.SendError(w,
 			http.StatusInternalServerError,
-			entity.CodePRCount,
+			entity.CodeInternalError,
 			"failed to get user counts")
 		return
 	}
@@ -70,11 +76,19 @@ func (s *Services) MetricsHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Services) UpdateMetrics(ctx context.Context) error {
 	prCounts, err := s.StatsService.GetAssignedCountPerPR(ctx)
 	if err != nil {
+		s.Log.Error("failed to get PR counts in UpdateMetrics",
+			errFieldName,
+			err)
+
 		return err
 	}
 
 	userCounts, err := s.StatsService.GetOpenPRCountPerUser(ctx)
 	if err != nil {
+		s.Log.Error("failed to get user counts in UpdateMetrics",
+			errFieldName,
+			err)
+
 		return err
 	}
 

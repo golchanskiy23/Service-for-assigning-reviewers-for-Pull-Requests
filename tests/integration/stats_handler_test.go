@@ -45,7 +45,9 @@ func TestMetricsHandler_ServesMetrics(t *testing.T) {
 	mockRepo.On("GetAssignedReviewersCountPerPR", mock.Anything).Return(prCounts, nil)
 	mockRepo.On("GetOpenPRCountPerUser", mock.Anything).Return(userCounts, nil)
 
-	services := &handlers.Services{StatsService: svc}
+	services := &handlers.Services{
+		Log:          newTestLogger(),
+		StatsService: svc}
 
 	req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
 	w := httptest.NewRecorder()
@@ -72,7 +74,9 @@ func TestMetricsHandler_ErrorPaths(t *testing.T) {
 
 		mockRepo.On("GetAssignedReviewersCountPerPR", mock.Anything).Return(nil, errors.New("db error"))
 
-		services := &handlers.Services{StatsService: svc}
+		services := &handlers.Services{
+			Log:          newTestLogger(),
+			StatsService: svc}
 
 		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
 		w := httptest.NewRecorder()
@@ -92,7 +96,9 @@ func TestMetricsHandler_ErrorPaths(t *testing.T) {
 		mockRepo.On("GetAssignedReviewersCountPerPR", mock.Anything).Return(map[string]int{}, nil)
 		mockRepo.On("GetOpenPRCountPerUser", mock.Anything).Return(nil, errors.New("db error"))
 
-		services := &handlers.Services{StatsService: svc}
+		services := &handlers.Services{
+			Log:          newTestLogger(),
+			StatsService: svc}
 
 		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
 		w := httptest.NewRecorder()
@@ -116,7 +122,9 @@ func TestUpdateMetrics_Method(t *testing.T) {
 	mockRepo.On("GetAssignedReviewersCountPerPR", mock.Anything).Return(prCounts, nil)
 	mockRepo.On("GetOpenPRCountPerUser", mock.Anything).Return(userCounts, nil)
 
-	services := &handlers.Services{StatsService: svc}
+	services := &handlers.Services{
+		Log:          newTestLogger(),
+		StatsService: svc}
 
 	err := services.UpdateMetrics(context.Background())
 	assert.NoError(t, err)

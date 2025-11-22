@@ -3,17 +3,26 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	vegeta "github.com/tsenart/vegeta/v12/lib"
 	"math/rand"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	vegeta "github.com/tsenart/vegeta/v12/lib"
 )
 
 type LoadService struct{}
 
-const baseURL = "http://localhost:8080"
+const (
+	baseURL   = "http://localhost:8080"
+	zero      = 0
+	one       = 1
+	two       = 2
+	four      = 4
+	bigint    = 100000
+	MagicFive = 5
+)
 
 var (
 	users sync.Map // key: user_id string, value: bool
@@ -55,14 +64,17 @@ func savePR(id string)     { prs.Store(id, true) }
 func saveTeam(name string) { teams.Store(name, true) }
 
 func getRandomFromMap(m *sync.Map) string {
-	keys := make([]string, 0)
+	keys := make([]string, zero)
+	// nolint:revive // ignore: unkeyed-arguments
 	m.Range(func(k, v any) bool {
+		// nolint:errcheck // ignore: exactly correct argument
 		keys = append(keys, k.(string))
 		return true
 	})
-	if len(keys) == 0 {
+	if len(keys) == zero {
 		return ""
 	}
+	// nolint:gosec // don't need cryptographic randomness here
 	return keys[rand.Intn(len(keys))]
 }
 
@@ -71,25 +83,32 @@ var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 func randString(n int) string {
 	b := make([]rune, n)
 	for i := range b {
+		// nolint:gosec // don't need cryptographic randomness here
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
 }
 
 func randUserID() string {
+	// nolint:gosec // don't need cryptographic randomness here
 	return fmt.Sprintf("u%d", rand.Intn(1000)+1)
 }
 
 func randPRID() string {
-	return fmt.Sprintf("pr-%d", rand.Intn(100000))
+	// nolint:gosec // don't need cryptographic randomness here
+	return fmt.Sprintf("pr-%d", rand.Intn(bigint))
 }
 
 func randBool() bool {
-	return rand.Intn(2) == 1
+	// nolint:gosec // don't need cryptographic randomness here
+	return rand.Intn(two) == one
 }
 
 func newPOST(path string, body any) vegeta.Target {
-	b, _ := json.Marshal(body)
+	b, err := json.Marshal(body)
+	if err != nil {
+		return vegeta.Target{}
+	}
 	return vegeta.Target{
 		Method: "POST",
 		URL:    baseURL + path,
@@ -110,19 +129,20 @@ func newGET(path string, params map[string]string) vegeta.Target {
 }
 
 func genTeamAdd() vegeta.Target {
-	n := rand.Intn(4) + 2
+	// nolint:gosec // don't need cryptographic randomness here
+	n := rand.Intn(four) + two
 	members := make([]map[string]any, n)
 
-	teamName := "team_" + randString(5)
+	teamName := "team_" + randString(MagicFive)
 	saveTeam(teamName)
 
-	for i := 0; i < n; i++ {
+	for i := zero; i < n; i++ {
 		uid := randUserID()
 		saveUser(uid)
 
 		members[i] = map[string]any{
 			"user_id":   uid,
-			"username":  randString(6),
+			"username":  randString(MagicFive + 1),
 			"is_active": randBool(),
 		}
 	}
@@ -166,7 +186,7 @@ func genPRCreate() vegeta.Target {
 
 	body := map[string]any{
 		"pull_request_id":   prID,
-		"pull_request_name": "pr_" + randString(7),
+		"pull_request_name": "pr_" + randString(MagicFive+2),
 		"author_id":         user,
 	}
 	return newPOST("/pullRequest/create", body)
@@ -201,9 +221,11 @@ var generators = []func() vegeta.Target{
 }
 
 func randomTarget() vegeta.Target {
+	// nolint:gosec // don't need cryptographic randomness here
 	return generators[rand.Intn(len(generators))]()
 }
 
+// nolint:revive // complexity is enougth
 func validateResponse(res *vegeta.Result) error {
 	parsed, err := url.Parse(res.URL)
 	if err != nil {
@@ -219,7 +241,10 @@ func validateResponse(res *vegeta.Result) error {
 	code := int(res.Code)
 	msgs, ok := allows[code]
 	if !ok {
-		return fmt.Errorf("[unexpected code] %d for %s; body=%s", code, path, string(res.Body))
+		return fmt.Errorf("[unexpected code] %d for %s; body=%s",
+			code,
+			path,
+			string(res.Body))
 	}
 
 	var payload map[string]any
@@ -238,7 +263,7 @@ func validateResponse(res *vegeta.Result) error {
 	}
 
 	for _, expectedMsg := range msgs {
-		if expectedMsg == "" || containsNormalized(msg, expectedMsg) {
+		if expectedMsg == emptyString || containsNormalized(msg, expectedMsg) {
 			return nil
 		}
 	}
@@ -253,13 +278,16 @@ func containsNormalized(got, expected string) bool {
 	return strings.Contains(g, e)
 }
 
+// nolint:revive // implements LoadServiceInterface
 func (s *LoadService) RunLoadTest(rate vegeta.Rate, duration time.Duration) {
 	targeter := vegeta.Targeter(func(t *vegeta.Target) error {
 		*t = randomTarget()
 
 		if len(t.Body) > 0 {
+			// nolint:debug // need to see requests during load test
 			fmt.Printf("REQUEST: %s %s\nBody: %s\n\n", t.Method, t.URL, string(t.Body))
 		} else {
+			// nolint:debug // need to see requests during load test
 			fmt.Printf("REQUEST: %s %s\n\n", t.Method, t.URL)
 		}
 
@@ -270,11 +298,12 @@ func (s *LoadService) RunLoadTest(rate vegeta.Rate, duration time.Duration) {
 	var metrics vegeta.Metrics
 
 	for res := range attacker.Attack(targeter, rate, duration, "mixed-load") {
+		//nolint:debug // need to see response after test
 		fmt.Printf("RESPONSE [%d] %s\nBody: %s\n\n",
 			res.Code, res.URL, string(res.Body))
 
 		if err := validateResponse(res); err != nil {
-			fmt.Printf("❌ Validation error: %v\n\n", err)
+			fmt.Printf("Validation error: %v\n\n", err)
 		}
 
 		metrics.Add(res)

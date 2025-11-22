@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +18,11 @@ import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
 )
+
+// newTestLogger creates a logger that discards all output for testing
+func newTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 type MockPRService struct {
 	mock.Mock
@@ -116,7 +123,7 @@ func TestServices_PRCreateHandler(t *testing.T) {
 				var resp entity.ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
+				assert.Equal(t, entity.CodeBadRequest, resp.Error.Code)
 			},
 		},
 		{
@@ -127,7 +134,7 @@ func TestServices_PRCreateHandler(t *testing.T) {
 				AuthorID:        "user1",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("CreatePR", mock.Anything, "pr1", "Test PR", "user1").Return(nil, "", errors.New("PR_EXISTS"))
+				prService.On("CreatePR", mock.Anything, "pr1", "Test PR", "user1").Return(nil, "", entity.ErrPRExists)
 			},
 			expectedStatus: http.StatusConflict,
 			expectedError:  true,
@@ -146,7 +153,7 @@ func TestServices_PRCreateHandler(t *testing.T) {
 				AuthorID:        "user1",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("CreatePR", mock.Anything, "pr1", "Test PR", "user1").Return(nil, "", errors.New("NOT_FOUND"))
+				prService.On("CreatePR", mock.Anything, "pr1", "Test PR", "user1").Return(nil, "", entity.ErrNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -183,6 +190,7 @@ func TestServices_PRCreateHandler(t *testing.T) {
 			tt.setupMocks(prService)
 
 			services := &handlers.Services{
+				Log:       newTestLogger(),
 				PRService: prService,
 			}
 
@@ -264,7 +272,7 @@ func TestServices_PRMergeHandler(t *testing.T) {
 				PullRequestID: "pr1",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("MergePR", mock.Anything, "pr1").Return(nil, errors.New("NOT_FOUND"))
+				prService.On("MergePR", mock.Anything, "pr1").Return(nil, entity.ErrNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -299,6 +307,7 @@ func TestServices_PRMergeHandler(t *testing.T) {
 			tt.setupMocks(prService)
 
 			services := &handlers.Services{
+				Log:       newTestLogger(),
 				PRService: prService,
 			}
 
@@ -380,7 +389,7 @@ func TestServices_PRReassignHandler(t *testing.T) {
 				OldUserID:     "user2",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", errors.New("NOT_FOUND"))
+				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", entity.ErrNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -398,7 +407,7 @@ func TestServices_PRReassignHandler(t *testing.T) {
 				OldUserID:     "user2",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", errors.New("PR_MERGED"))
+				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", entity.ErrPRMerged)
 			},
 			expectedStatus: http.StatusConflict,
 			expectedError:  true,
@@ -416,7 +425,7 @@ func TestServices_PRReassignHandler(t *testing.T) {
 				OldUserID:     "user2",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", errors.New("NOT_ASSIGNED"))
+				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", entity.ErrNotAssigned)
 			},
 			expectedStatus: http.StatusConflict,
 			expectedError:  true,
@@ -434,7 +443,7 @@ func TestServices_PRReassignHandler(t *testing.T) {
 				OldUserID:     "user2",
 			},
 			setupMocks: func(prService *MockPRService) {
-				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", errors.New("NO_CANDIDATE"))
+				prService.On("ReassignReviewer", mock.Anything, "pr1", "user2").Return(nil, "", entity.ErrNoCandidate)
 			},
 			expectedStatus: http.StatusConflict,
 			expectedError:  true,
@@ -470,6 +479,7 @@ func TestServices_PRReassignHandler(t *testing.T) {
 			tt.setupMocks(prService)
 
 			services := &handlers.Services{
+				Log:       newTestLogger(),
 				PRService: prService,
 			}
 

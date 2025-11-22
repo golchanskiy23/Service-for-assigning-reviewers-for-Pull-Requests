@@ -17,6 +17,10 @@ import (
 	server "Service-for-assigning-reviewers-for-Pull-Requests/pkg/server"
 )
 
+const (
+	zero = 0
+)
+
 func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
 	opts := []database.Option{
 		database.SetMaxPoolSize(cfg.Database.MaxPoolSize),
@@ -47,12 +51,13 @@ func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
 	ctx := context.Background()
 	var pingErr error
 	const maxPingAttempts = 10
-	for attempt := 0; attempt < maxPingAttempts; attempt++ {
+	const retryDelay = 300 * time.Millisecond
+	for attempt := zero; attempt < maxPingAttempts; attempt++ {
 		pingErr = db.Pool.Ping(ctx)
 		if pingErr == nil {
 			break
 		}
-		wait := time.Duration(attempt+1) * 300 * time.Millisecond
+		wait := time.Duration(attempt+1) * retryDelay
 		time.Sleep(wait)
 	}
 	if pingErr != nil {
@@ -76,7 +81,7 @@ func Run(cfg *config.Config, logger *slog.Logger) error {
 	}(db)
 
 	pgRepository := initDBRepository(db)
-	s := handlers.CreateNewService(pgRepository)
+	s := handlers.CreateNewService(pgRepository, logger)
 	r := chi.NewMux()
 	server.RegisterRoutes(s, r)
 	srv := server.StartServer(cfg, r, logger)

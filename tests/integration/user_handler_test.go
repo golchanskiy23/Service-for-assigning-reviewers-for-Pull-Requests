@@ -104,7 +104,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				var resp entity.ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
+				assert.Equal(t, entity.CodeBadRequest, resp.Error.Code)
 			},
 		},
 		{
@@ -114,7 +114,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 				IsActive: true,
 			},
 			setupMocks: func(userService *MockUserService) {
-				userService.On("ChangeStatus", mock.Anything, "user1", true).Return(nil, errors.New("NOT_FOUND"))
+				userService.On("ChangeStatus", mock.Anything, "user1", true).Return(nil, entity.ErrNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -175,6 +175,7 @@ func TestServices_UserSetIsActiveHandler(t *testing.T) {
 			tt.setupMocks(userService)
 
 			services := &handlers.Services{
+				Log:         newTestLogger(),
 				UserService: userService,
 			}
 
@@ -249,14 +250,14 @@ func TestServices_UserGetReviewHandler(t *testing.T) {
 				var resp entity.ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
+				assert.Equal(t, entity.CodeBadRequest, resp.Error.Code)
 			},
 		},
 		{
 			name:   "user not found",
 			userID: "user1",
 			setupMocks: func(userService *MockUserService) {
-				userService.On("GetPRsAssignedTo", mock.Anything, "user1").Return("", nil, errors.New("NOT_FOUND"))
+				userService.On("GetPRsAssignedTo", mock.Anything, "user1").Return("", nil, entity.ErrNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -305,6 +306,7 @@ func TestServices_UserGetReviewHandler(t *testing.T) {
 			tt.setupMocks(userService)
 
 			services := &handlers.Services{
+				Log:         newTestLogger(),
 				UserService: userService,
 			}
 
