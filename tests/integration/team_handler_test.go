@@ -96,7 +96,7 @@ func TestServices_TeamAddHandler(t *testing.T) {
 				var resp entity.ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
+				assert.Equal(t, entity.CodeBadRequest, resp.Error.Code)
 			},
 		},
 		{
@@ -112,7 +112,7 @@ func TestServices_TeamAddHandler(t *testing.T) {
 				var resp entity.ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
+				assert.Equal(t, entity.CodeBadRequest, resp.Error.Code)
 			},
 		},
 		{
@@ -122,9 +122,9 @@ func TestServices_TeamAddHandler(t *testing.T) {
 				Members:  []entity.TeamMember{},
 			},
 			setupMocks: func(teamService *MockTeamService) {
-				teamService.On("AddTeam", mock.Anything, mock.AnythingOfType("*entity.Team")).Return(nil, errors.New("TEAM_EXISTS"))
+				teamService.On("AddTeam", mock.Anything, mock.AnythingOfType("*entity.Team")).Return(nil, entity.ErrTeamExists)
 			},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusConflict,
 			expectedError:  true,
 			checkResponse: func(t *testing.T, w *httptest.ResponseRecorder) {
 				var resp entity.ErrorResponse
@@ -182,6 +182,7 @@ func TestServices_TeamAddHandler(t *testing.T) {
 			tt.setupMocks(teamService)
 
 			services := &handlers.Services{
+				Log:         newTestLogger(),
 				TeamService: teamService,
 			}
 
@@ -244,13 +245,13 @@ func TestServices_TeamGetHandler(t *testing.T) {
 			name:           "missing team_name parameter",
 			teamName:       "",
 			setupMocks:     func(teamService *MockTeamService) {},
-			expectedStatus: http.StatusNotFound,
+			expectedStatus: http.StatusBadRequest,
 			expectedError:  true,
 			checkResponse: func(t *testing.T, w *httptest.ResponseRecorder) {
 				var resp entity.ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, entity.CodeNotFound, resp.Error.Code)
+				assert.Equal(t, entity.CodeBadRequest, resp.Error.Code)
 			},
 		},
 		//nolint:dupl // necessary tests
@@ -258,7 +259,7 @@ func TestServices_TeamGetHandler(t *testing.T) {
 			name:     "team not found",
 			teamName: "team1",
 			setupMocks: func(teamService *MockTeamService) {
-				teamService.On("GetTeam", mock.Anything, "team1").Return(nil, errors.New("NOT_FOUND"))
+				teamService.On("GetTeam", mock.Anything, "team1").Return(nil, entity.ErrNotFound)
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedError:  true,
@@ -313,6 +314,7 @@ func TestServices_TeamGetHandler(t *testing.T) {
 			tt.setupMocks(teamService)
 
 			services := &handlers.Services{
+				Log:         newTestLogger(),
 				TeamService: teamService,
 			}
 
