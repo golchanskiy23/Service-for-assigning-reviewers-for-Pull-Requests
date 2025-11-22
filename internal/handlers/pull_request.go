@@ -13,131 +13,110 @@ type PRCreateRequest struct {
 	AuthorID        string `json:"author_id"`
 }
 
+type PRCreateResponse struct {
+	PR entity.PullRequest `json:"pr"`
+}
+
 type PRReassignRequest struct {
-	PullRequestID int `json:"pull_request_id"`
-	OldReviewerID int `json:"reviewerId"`
+	PullRequestID string `json:"pull_request_id"`
+	OldUserID     string `json:"old_user_id"`
+}
+
+type PRReassignResponse struct {
+	PR         entity.PullRequest `json:"pr"`
+	ReplacedBy string             `json:"replaced_by"`
 }
 
 type PRMergeRequest struct {
 	PullRequestID string `json:"pull_request_id"`
 }
 
-func (service *Services) PRCreateHandler(w http.ResponseWriter, r *http.Request) {
+type PRMergeResponse struct {
+	PR entity.PullRequest `json:"pr"`
+}
+
+func (s *Services) PRCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
 	}
 
-	// pull_request, code
-	pr, code := service.PRService.CreatePR(req.Title, req.Author)
+	ctx := r.Context()
+	pr, _, err := s.PRService.CreatePR(ctx, req.PullRequestID, req.PullRequestName, req.AuthorID)
 	if err != nil {
-		util.RespondError(w, http.StatusBadRequest, err.Error())
+		if err.Error() == "PR_EXISTS" {
+			util.SendError(w, http.StatusConflict, entity.CodePRExists, "PR id already exists")
+		} else if err.Error() == "NOT_FOUND" {
+			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "author/team not found")
+		} else {
+			util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
+		}
 		return
-	}
-
-	if code == entity.CodeNotFound {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "author/team not found")
-	} else if code == entity.CodePRExists {
-		util.SendError(w, http.StatusConflict, entity.CodeNotFound, "PR id already exists")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(pr)
+	json.NewEncoder(w).Encode(PRCreateResponse{PR: *pr})
 }
 
-func (service *Services) PRMergeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Services) PRMergeHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRMergeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
 	}
 
-	pr, err := service.PRService.MergePR(req.PullRequestID)
+	ctx := r.Context()
+	pr, err := s.PRService.MergePR(ctx, req.PullRequestID)
 	if err != nil {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "pr not found")
+		if err.Error() == "NOT_FOUND" {
+			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "PR not found")
+		} else {
+			util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(pr)
+	json.NewEncoder(w).Encode(PRMergeResponse{PR: *pr})
 }
 
-func (h *PullRequestHandler) ReassignReviewer(w http.ResponseWriter, r *http.Request) {
+func (s *Services) PRReassignHandler(w http.ResponseWriter, r *http.Request) {
 	var req PRReassignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
 	}
 
-	// 1. Получить PR
-	pr, err := h.PRRepo.GetByID(req.PullRequestID)
-	if err != nil || pr == nil {
-		writeJSON(w, http.StatusNotFound, errorResp("NOT_FOUND", "pull request not found"))
-		return
-	}
-
-	// 2. Проверить статус
-	if pr.Status == "MERGED" {
-		writeJSON(w, http.StatusConflict, errorResp("PR_MERGED", "cannot reassign on merged PR"))
-		return
-	}
-
-	// 3. Проверить, что old_user_id был ревьювером
-	index := -1
-	for i, rid := range pr.AssignedReviewers {
-		if rid == req.OldUserID {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		writeJSON(w, http.StatusConflict, errorResp("NOT_ASSIGNED", "reviewer is not assigned to this PR"))
-		return
-	}
-
-	// 4. Найти пользователя и его команду
-	oldUser, err := h.UserRepo.GetByID(req.OldUserID)
-	if err != nil || oldUser == nil {
-		writeJSON(w, http.StatusNotFound, errorResp("NOT_FOUND", "old reviewer not found"))
-		return
-	}
-
-	// 5. Найти замену в его команде
-	candidates, err := h.UserRepo.GetTeamActiveUsers(oldUser.TeamID)
+	ctx := r.Context()
+	pr, replacedBy, err := s.PRService.ReassignReviewer(ctx, req.PullRequestID, req.OldUserID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, errorResp("INTERNAL", "internal error"))
-		return
-	}
-
-	var replacement *User
-	for _, u := range candidates {
-		if u.ID != req.OldUserID && u.Active {
-			replacement = u
-			break
+		if err.Error() == "NOT_FOUND" {
+			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "PR or user not found")
+			return
 		}
-	}
-
-	if replacement == nil {
-		writeJSON(w, http.StatusConflict, errorResp("NO_CANDIDATE", "no active replacement candidate in team"))
+		if err.Error() == "PR_MERGED" {
+			util.SendError(w, http.StatusConflict, entity.CodePRMerged, "cannot reassign on merged PR")
+			return
+		}
+		if err.Error() == "NOT_ASSIGNED" {
+			util.SendError(w, http.StatusConflict, entity.CodeNotAssigned, "reviewer is not assigned to this PR")
+			return
+		}
+		if err.Error() == "NO_CANDIDATE" {
+			util.SendError(w, http.StatusConflict, entity.CodeNoCandidate, "no active replacement candidate in team")
+			return
+		}
+		util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
 		return
 	}
 
-	// 6. Заменить ревьювера
-	pr.AssignedReviewers[index] = replacement.ID
-
-	// 7. Сохранить
-	if err := h.PRRepo.Save(pr); err != nil {
-		writeJSON(w, http.StatusInternalServerError, errorResp("INTERNAL", "failed to save PR"))
-		return
-	}
-
-	// 8. Ответ
-	resp := ReassignResponse{
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(PRReassignResponse{
 		PR:         *pr,
-		ReplacedBy: replacement.ID,
-	}
-	writeJSON(w, http.StatusOK, resp)
+		ReplacedBy: replacedBy,
+	})
 }

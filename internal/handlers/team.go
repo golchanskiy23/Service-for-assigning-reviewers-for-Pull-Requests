@@ -7,46 +7,48 @@ import (
 	"net/http"
 )
 
-type TeamAddRequest struct {
+type TeamAddResponse struct {
 	Team entity.Team `json:"team"`
 }
 
-type UserGetReviewRequest struct {
-	Query entity.TeamNameQuery `json:"query"`
-}
-
-func (service *Services) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
-	var req TeamAddRequest
+func (s *Services) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
+	var req entity.Team
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
 	}
-	if req.Team.TeamName == "" {
+	if req.TeamName == "" {
 		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "team name is required")
 		return
 	}
 
-	team, err := service.TeamService.AddTeam(req)
+	ctx := r.Context()
+	team, err := s.TeamService.AddTeam(ctx, &req)
 	if err != nil {
-		util.SendError(w, http.StatusBadRequest, entity.CodeTeamExists, "team_name already exists")
+		if err.Error() == "TEAM_EXISTS" {
+			util.SendError(w, http.StatusBadRequest, entity.CodeTeamExists, "team_name already exists")
+			return
+		}
+		util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(team)
+	json.NewEncoder(w).Encode(TeamAddResponse{Team: *team})
 }
 
-func (service *Services) TeamGetHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Services) TeamGetHandler(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("team_name")
 	if name == "" {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "team_not_found")
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "team not found")
 		return
 	}
 
-	team, err := service.TeamService.GetTeam(name)
+	ctx := r.Context()
+	team, err := s.TeamService.GetTeam(ctx, name)
 	if err != nil {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "team_not_found")
+		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "team not found")
 		return
 	}
 

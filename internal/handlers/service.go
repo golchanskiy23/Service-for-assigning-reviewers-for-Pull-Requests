@@ -12,9 +12,10 @@ type Services struct {
 }
 
 func CreateNewService(repo *postgres.Repository) *Services {
+	prService := service.NewPRService(repo.PullRequests, repo.Users, repo.Teams)
 	return &Services{
 		TeamService: service.NewTeamService(repo.Teams),
-		UserService: service.NewUserService(repo.Users),
-		PRService:   service.NewPRService(repo.PullRequests, repo.Users, repo.Teams),
+		UserService: service.NewUserService(repo.Users, repo.PullRequests, repo.Teams, prService),
+		PRService:   prService,
 	}
 }

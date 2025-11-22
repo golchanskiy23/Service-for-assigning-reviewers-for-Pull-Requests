@@ -5,7 +5,6 @@ import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/util"
 	"encoding/json"
 	"net/http"
-	"strconv"
 )
 
 type UserSetIsActiveRequest struct {
@@ -13,41 +12,64 @@ type UserSetIsActiveRequest struct {
 	IsActive bool   `json:"is_active"`
 }
 
+type UserSetIsActiveResponse struct {
+	User entity.User `json:"user"`
+}
+
 type UserGetReviewResponse struct {
 	UserID       string                    `json:"user_id"`
 	PullRequests []entity.PullRequestShort `json:"pull_requests"`
 }
 
-func (service *Services) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Services) UserSetIsActiveHandler(w http.ResponseWriter, r *http.Request) {
 	var req UserSetIsActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
 	}
 
-	user, err := service.UserService.ChangeActivateStatus(req.UserID, req.IsActive)
+	ctx := r.Context()
+	user, err := s.UserService.ChangeActivateStatus(ctx, req.UserID, req.IsActive)
 	if err != nil {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
+		if err.Error() == "NOT_FOUND" {
+			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
+			return
+		}
+		util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(UserSetIsActiveResponse{User: *user})
 }
 
-func (service *Services) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
-	userIDStr, err := strconv.Atoi(r.URL.Query().Get("user_id"))
-	if err != nil {
-		util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "empty param")
+func (s *Services) UserGetReviewHandler(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "user_id parameter is required")
 		return
 	}
-	// string, []pull_request(pull_request_short)
-	id, arr := service.UserService.GetPRsAssignedTo(userIDStr)
+
+	ctx := r.Context()
+	id, prs, err := s.UserService.GetPRsAssignedTo(ctx, userID)
+	if err != nil {
+		if err.Error() == "NOT_FOUND" {
+			util.SendError(w, http.StatusNotFound, entity.CodeNotFound, "user not found")
+			return
+		}
+		util.SendError(w, http.StatusInternalServerError, entity.CodeNotFound, err.Error())
+		return
+	}
+
+	pullRequests := make([]entity.PullRequestShort, len(prs))
+	for i, pr := range prs {
+		pullRequests[i] = *pr
+	}
 
 	resp := UserGetReviewResponse{
 		UserID:       id,
-		PullRequests: transform(arr),
+		PullRequests: pullRequests,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -3,9 +3,9 @@ package app
 import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
-	postgres "Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
+	"Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
-	server "Service-for-assigning-reviewers-for-Pull-Requests/pkg/server"
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/server"
 	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -13,30 +13,21 @@ import (
 	"time"
 )
 
-/*
-func InitDB(db *postgres.DatabaseSource, path string) error {
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("error reading file: %v", err)
-	}
-	if _, err = db.Pool.Exec(context.Background(), string(file)); err != nil {
-		return fmt.Errorf("error executing sql: %v", err)
-	}
-	givenOrder, err := utils.GetGivenOrder()
-	if err != nil {
-		return fmt.Errorf("error getting givenOrder: %v", err)
-	}
-
-	if err = postgres.AddOrdersToDB(db, givenOrder); err != nil {
-		return fmt.Errorf("error adding orders to database: %v", err)
-	}
-	return nil
-}*/
-
 func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
+	opts := []database.Option{
+		database.SetMaxPoolSize(cfg.Database.MaxPoolSize),
+	}
+
+	if cfg.Database.MaxConnLifetime != nil {
+		opts = append(opts, database.SetMaxConnLifetime(*cfg.Database.MaxConnLifetime))
+	}
+	if cfg.Database.MaxConnectTimeout != nil {
+		opts = append(opts, database.SetMaxConnectTimeout(*cfg.Database.MaxConnectTimeout))
+	}
+
 	db, err := database.NewStorage(
 		database.GetConnection(&cfg.Database),
-		database.SetMaxPoolSize(cfg.Database.MaxPoolSize),
+		opts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init postgres: %w", err)
