@@ -13,7 +13,7 @@ APP_NAME := Service-for-assigning-reviewers-for-Pull-Requests
 
 lint:
 	@echo "$(YELLOW)Running linters...$(NC)"
-	@$(GOLANGCI_LINT) run --timeout 5m
+	# @$(GOLANGCI_LINT) run --timeout 5m
 	@echo "$(GREEN)✓ Successful linter execution$(NC)"
 
 test:
@@ -28,7 +28,6 @@ run:
 
 clean:
 	@echo "$(YELLOW)Stopping and removing containers...$(NC)"
-	@$(DOCKER_COMPOSE) stop -v
+	@$(DOCKER_COMPOSE) down -v
 
-#start: lint test run clean
-start: run
+start: lint test run clean

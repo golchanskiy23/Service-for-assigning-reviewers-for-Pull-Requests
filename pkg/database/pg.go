@@ -30,15 +30,22 @@ const (
 )
 
 func GetConnection(cfg *config.DB) string {
-	return fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
+	host := os.Getenv("POSTGRES_HOST")
+	if host == "" {
+		host = "database"
+	}
+	dsn := fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
 		"postgres",
 		os.Getenv("POSTGRES_UNSAFE_USERNAME"),
 		os.Getenv("POSTGRES_UNSAFE_PASSWORD"),
-		"localhost",
+		host,
 		cfg.Port,
 		cfg.Name,
 		cfg.SSLMode,
 	)
+	//nolint:revive // debug
+	fmt.Println(dsn)
+	return dsn
 }
 
 func (s *DatabaseSource) Close() {
