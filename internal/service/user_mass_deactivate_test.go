@@ -36,7 +36,7 @@ func TestUserService_MassDeactivate(t *testing.T) {
 			{UserID: "u2", TeamName: "team2"},
 		}
 		err := svc.MassDeactivate(ctx, users, false)
-		assert.EqualError(t, err, "DIFFERENT_TEAM")
+		assert.EqualError(t, err, "USERS_FROM_DIFFERENT_TEAMS")
 	})
 
 	t.Run("repo GetUser returns not found when team missing", func(t *testing.T) {

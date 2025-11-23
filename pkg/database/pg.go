@@ -32,7 +32,7 @@ const (
 func GetConnection(cfg *config.DB) string {
 	host := os.Getenv("POSTGRES_HOST")
 	if host == "" {
-		host = "database"
+		host = "localhost"
 	}
 	dsn := fmt.Sprintf("%s://%s:%s@%s:%d/%s?sslmode=%s",
 		"postgres",
@@ -43,8 +43,6 @@ func GetConnection(cfg *config.DB) string {
 		cfg.Name,
 		cfg.SSLMode,
 	)
-	//nolint:revive // debug
-	fmt.Println(dsn)
 	return dsn
 }
 
@@ -88,8 +86,6 @@ func NewStorage(url string, options ...Option) (*DatabaseSource, error) {
 		default:
 			src.Pool, err = pgxpool.NewWithConfig(context.Background(), cfg)
 			if err == nil {
-				//nolint:revive // Debug output
-				fmt.Println(src)
 				return src, nil
 			}
 		}

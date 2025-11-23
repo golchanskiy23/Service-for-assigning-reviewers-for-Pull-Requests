@@ -25,7 +25,7 @@ services:
       database:
         condition: service_healthy
     environment:
-      POSTGRES_HOST: database
+      POSTGRES_HOST: localhost
       POSTGRES_UNSAFE_USERNAME: ${POSTGRES_UNSAFE_USERNAME}
       POSTGRES_UNSAFE_PASSWORD: ${POSTGRES_UNSAFE_PASSWORD}
       POSTGRES_PORT: 5432
