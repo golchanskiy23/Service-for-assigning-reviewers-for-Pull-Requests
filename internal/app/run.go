@@ -4,12 +4,12 @@ import (
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/handlers"
 	postgres "Service-for-assigning-reviewers-for-Pull-Requests/internal/repository/postgres"
-	"Service-for-assigning-reviewers-for-Pull-Requests/internal/server"
 	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/database"
+	server "Service-for-assigning-reviewers-for-Pull-Requests/pkg/server"
 	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"net/http"
+	"log/slog"
 )
 
 /*
@@ -50,7 +50,7 @@ func initDBRepository(db *database.DatabaseSource) *postgres.Repository {
 	return postgres.CreateNewDBRepository(db)
 }
 
-func Run(cfg *config.Config) error {
+func Run(cfg *config.Config, logger *slog.Logger) error {
 	db, err := initPostgres(cfg)
 	if err != nil {
 		return err
@@ -63,8 +63,7 @@ func Run(cfg *config.Config) error {
 	s := handlers.CreateNewService(pgRepository)
 	r := chi.NewMux()
 	server.RegisterRoutes(s, r)
-	srv := &http.Server{}
-	if err = server.StartServer(srv); err != nil {
+	if err = server.StartServer(cfg, r, logger); err != nil {
 		return fmt.Errorf("start server error: %v", err)
 	}
 	return nil

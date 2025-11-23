@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
-	"encoding/json"
 	"net/http"
 )
 
@@ -11,7 +9,7 @@ type TeamAddRequest struct {
 }
 
 func (service *Services) TeamAddHandler(w http.ResponseWriter, r *http.Request) {
-	var req TeamAddRequest
+	/*var req TeamAddRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -27,11 +25,11 @@ func (service *Services) TeamAddHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	util.RespondJSON(w, http.StatusCreated, team)
+	util.RespondJSON(w, http.StatusCreated, team)*/
 }
 
 func (service *Services) TeamGetHandler(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
+	/*name := r.URL.Query().Get("name")
 	if name == "" {
 		util.RespondError(w, http.StatusBadRequest, "name is required")
 		return
@@ -43,5 +41,5 @@ func (service *Services) TeamGetHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, team)
+	util.RespondJSON(w, http.StatusOK, team)*/
 }

@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
-	"encoding/json"
 	"net/http"
 )
 
@@ -21,7 +19,7 @@ type PRMergeRequest struct {
 }
 
 func (service *Services) PRCreateHandler(w http.ResponseWriter, r *http.Request) {
-	var req PRCreateRequest
+	/*var req PRCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -33,11 +31,11 @@ func (service *Services) PRCreateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	util.RespondJSON(w, http.StatusCreated, pr)
+	util.RespondJSON(w, http.StatusCreated, pr)*/
 }
 
 func (service *Services) PRMergeHandler(w http.ResponseWriter, r *http.Request) {
-	var req PRMergeRequest
+	/*var req PRMergeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -49,11 +47,11 @@ func (service *Services) PRMergeHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, pr)
+	util.RespondJSON(w, http.StatusOK, pr)*/
 }
 
 func (service *Services) PRReassignHandler(w http.ResponseWriter, r *http.Request) {
-	var req PRReassignRequest
+	/*var req PRReassignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.RespondError(w, http.StatusBadRequest, "invalid json")
 		return
@@ -65,5 +63,5 @@ func (service *Services) PRReassignHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	util.RespondJSON(w, http.StatusOK, pr)
+	util.RespondJSON(w, http.StatusOK, pr)*/
 }
