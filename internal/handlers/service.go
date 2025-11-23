@@ -31,6 +31,7 @@ func CreateNewService(repo *postgres.Repository, logger *slog.Logger) *Services 
 			prService,
 		),
 		PRService:    prService,
+		LoadService:  &service.LoadService{},
 		StatsService: service.NewStatsService(repo.Stats),
 	}
 }
