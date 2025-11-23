@@ -11,9 +11,6 @@ const (
 	exponentBase = 2
 )
 
-// CreateNewDelay creates a new delay with exponential backoff and jitter.
-// Uses math/rand which is sufficient for jitter (not security-critical).
-//
 //nolint:gosec // math/rand is sufficient for jitter, crypto/rand is not needed
 func CreateNewDelay(attempt int, maxVal time.Duration) time.Duration {
 	backoff := baseDelay *
