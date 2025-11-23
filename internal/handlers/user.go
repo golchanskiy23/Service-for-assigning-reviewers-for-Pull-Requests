@@ -22,19 +22,19 @@ type UserGetReviewResponse struct {
 	PullRequests []entity.PullRequestShort `json:"pull_requests"`
 }
 
-type bulkUserItem struct {
+type UserItem struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
 	TeamName string `json:"team_name"`
 	IsActive bool   `json:"is_active"`
 }
 
-type BulkUserChangeRequest struct {
-	Users []bulkUserItem `json:"users"`
-	Flag  bool           `json:"flag"`
+type UserMassChangeRequest struct {
+	Users []UserItem `json:"users"`
+	Flag  bool       `json:"flag"`
 }
 
-type BulkUserChangeResponse struct {
+type UserMassChangeResponse struct {
 	Deactivated []string `json:"deactivated_user_ids"`
 }
 
@@ -153,11 +153,11 @@ func (s *Services) UserGetReviewHandler(
 // UserBulkDeactivateHandler accepts a JSON array of {user_id, is_active:false}
 // All users must belong to the same team; if any item requests is_active==true
 // or users from different teams are provided, handler responds with error.
-func (s *Services) UserBulkDeactivateHandler(
+func (s *Services) UsersMassDeactivateHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	var req BulkUserChangeRequest
+	var req UserMassChangeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		util.SendError(w, http.StatusBadRequest, entity.CodeNotFound, "invalid json")
 		return
@@ -211,7 +211,7 @@ func (s *Services) UserBulkDeactivateHandler(
 		userIDs = append(userIDs, u.UserID)
 	}
 
-	resp := BulkUserChangeResponse{Deactivated: userIDs}
+	resp := UserMassChangeResponse{Deactivated: userIDs}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
