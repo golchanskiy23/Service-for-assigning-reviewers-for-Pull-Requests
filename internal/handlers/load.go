@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/util"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,8 +10,6 @@ import (
 	"time"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
-
 	vegeta "github.com/tsenart/vegeta/v12/lib"
 )
 

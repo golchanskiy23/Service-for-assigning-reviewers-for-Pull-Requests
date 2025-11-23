@@ -1,12 +1,11 @@
 package handlers
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/util"
 	"context"
 	"net/http"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

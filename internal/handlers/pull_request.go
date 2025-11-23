@@ -2,13 +2,13 @@
 package handlers
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/util"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/internal/entity"
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
 )
 
 const (

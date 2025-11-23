@@ -1,6 +1,7 @@
 package database
 
 import (
+	"Service-for-assigning-reviewers-for-Pull-Requests/pkg/util"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"Service-for-assigning-reviewers-for-Pull-Requests/config"
-	"Service-for-assigning-reviewers-for-Pull-Requests/util"
 )
 
 //nolint:revive // exported: DatabaseSource is a clear and descriptive name
