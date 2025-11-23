@@ -12,7 +12,7 @@ APP_NAME := Service-for-assigning-reviewers-for-Pull-Requests
 
 docker-up:
 	@echo "$(YELLOW)Starting containers...$(NC)"
-	@$(DOCKER_COMPOSE) up -d --build
+	@$(DOCKER_COMPOSE) up -d database
 	@echo "$(YELLOW)Waiting for database to be ready...$(NC)"
 	@timeout=30; \
 	username=$$(grep -E '^POSTGRES_UNSAFE_USERNAME=' .env 2>/dev/null | cut -d '=' -f2 || echo "myuser"); \
