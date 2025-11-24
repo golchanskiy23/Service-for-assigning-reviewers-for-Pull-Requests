@@ -44,8 +44,19 @@ func initPostgres(cfg *config.Config) (*database.DatabaseSource, error) {
 		return nil, fmt.Errorf("failed to create internal storage: %w", err)
 	}
 
-	if err = db.Pool.Ping(context.Background()); err != nil {
-		return nil, fmt.Errorf("ping error: %w", err)
+	ctx := context.Background()
+	var pingErr error
+	const maxPingAttempts = 10
+	for attempt := 0; attempt < maxPingAttempts; attempt++ {
+		pingErr = db.Pool.Ping(ctx)
+		if pingErr == nil {
+			break
+		}
+		wait := time.Duration(attempt+1) * 300 * time.Millisecond
+		time.Sleep(wait)
+	}
+	if pingErr != nil {
+		return nil, fmt.Errorf("ping error: %w", pingErr)
 	}
 
 	return db, nil
