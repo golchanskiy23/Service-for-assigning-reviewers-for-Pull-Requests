@@ -34,12 +34,12 @@ func (s *TeamService) AddTeam(ctx context.Context, team *entity.Team) (*entity.T
 	}
 
 	if exists {
-		return nil, errors.New("TEAM_EXISTS")
+		return nil, entity.ErrTeamExists
 	}
 
 	err = s.repo.AddTeam(queryCtx, team)
 	if err != nil {
-		if err.Error() == "TEAM_EXISTS" {
+		if errors.Is(err, entity.ErrTeamExists) {
 			return nil, err
 		}
 

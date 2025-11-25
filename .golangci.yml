@@ -1,0 +1,60 @@
+run:
+  timeout: 5m
+  skip-dirs:
+    - vendor
+    - mocks
+    - tests
+  skip-files:
+    - ".*_mock.go$"
+
+linters:
+  enable:
+    - errcheck           # Проверка необработанных ошибок
+    - goimports          # Сортировка импортов
+    - gocritic           # Критика кода
+    - gofmt              # Формат кода
+    - revive             # Набор правил стиля
+    - unused             # Неиспользуемые переменные
+    - gosimple           # Упрощение кода
+    - govet              # Ветеринарные проверки go
+    - ineffassign        # Неэффективные присваивания
+    - misspell           # Опечатки в комментариях
+    - typecheck          # Проверка типов
+    - staticcheck        # Статический анализ
+
+linters-settings:
+  revive:
+    rules:
+      - name: unexported-naming
+        disabled: false
+      - name: var-naming
+        disabled: false
+      - name: cyclomatic
+        arguments: [12]  # Максимальная цикломатическая сложность
+      - name: line-length-limit
+        arguments: [120]
+
+  goimports:
+    local-prefixes: Service-for-assigning-reviewers-for-Pull-Requests
+
+  cyclop:
+    max-complexity: 10
+    package-average: 5
+    skip-tests: true
+
+issues:
+  exclude-rules:
+    # Исключить ошибки для тестовых файлов
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+
+    # Разрешить немного более длинные функции main
+    - path: cmd/
+      linters:
+        - gocyclo
+
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  max-per-linter: 0

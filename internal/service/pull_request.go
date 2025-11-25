@@ -49,17 +49,17 @@ func (s *PRService) CreatePR(
 	}
 
 	if exists {
-		return nil, emptyString, errors.New("PR_EXISTS")
+		return nil, emptyString, entity.ErrPRExists
 	}
 
 	author, err := s.userRepo.GetUser(queryCtx, authorID)
 	if err != nil {
-		return nil, emptyString, errors.New("NOT_FOUND")
+		return nil, emptyString, entity.ErrNotFound
 	}
 
 	_, err = s.teamRepo.GetTeam(queryCtx, author.TeamName)
 	if err != nil {
-		return nil, emptyString, errors.New("NOT_FOUND")
+		return nil, emptyString, entity.ErrNotFound
 	}
 
 	candidates, err := s.userRepo.GetActiveUsersByTeam(queryCtx, author.TeamName, []string{authorID})
@@ -98,7 +98,7 @@ func (s *PRService) CreatePR(
 
 	err = s.repo.CreatePR(queryCtx, pr, reviewerIDs)
 	if err != nil {
-		if err.Error() == "PR_EXISTS" {
+		if errors.Is(err, entity.ErrPRExists) {
 			return nil, emptyString, err
 		}
 
@@ -120,7 +120,7 @@ func (s *PRService) MergePR(ctx context.Context, prID string) (*entity.PullReque
 
 	pr, err := s.repo.GetPR(queryCtx, prID)
 	if err != nil {
-		return nil, errors.New(notFoundErr)
+		return nil, entity.ErrNotFound
 	}
 
 	if pr.Status == entity.MERGED {
@@ -150,11 +150,11 @@ func (s *PRService) ReassignReviewer(
 
 	pr, e := s.repo.GetPR(queryCtx, prID)
 	if e != nil {
-		return nil, emptyString, errors.New("NOT_FOUND")
+		return nil, emptyString, entity.ErrNotFound
 	}
 
 	if pr.Status == entity.MERGED {
-		return nil, emptyString, errors.New("PR_MERGED")
+		return nil, emptyString, entity.ErrPRMerged
 	}
 
 	// If oldReviewerID is empty, interpret as "assign a new reviewer" (append)
@@ -162,7 +162,7 @@ func (s *PRService) ReassignReviewer(
 		// use PR author team to find candidates (same as create PR flow)
 		author, err := s.userRepo.GetUser(queryCtx, pr.AuthorID)
 		if err != nil {
-			return nil, emptyString, errors.New("NOT_FOUND")
+			return nil, emptyString, entity.ErrNotFound
 		}
 
 		// exclude author and any already assigned reviewers
@@ -214,7 +214,7 @@ func (s *PRService) ReassignReviewer(
 
 		// otherwise (existing reviewers present) pick a single reviewer to append
 		if len(candidates) == zeroLength {
-			return nil, emptyString, errors.New("NO_CANDIDATE")
+			return nil, emptyString, entity.ErrNoCandidate
 		}
 
 		//nolint:gosec // math/rand is sufficient for selecting a random reviewer
@@ -248,12 +248,12 @@ func (s *PRService) ReassignReviewer(
 	}
 
 	if !found {
-		return nil, emptyString, errors.New("NOT_ASSIGNED")
+		return nil, emptyString, entity.ErrNotAssigned
 	}
 
 	oldReviewer, err := s.userRepo.GetUser(queryCtx, oldReviewerID)
 	if err != nil {
-		return nil, emptyString, errors.New("NOT_FOUND")
+		return nil, emptyString, entity.ErrNotFound
 	}
 
 	exclude := []string{pr.AuthorID, oldReviewerID}
@@ -264,7 +264,7 @@ func (s *PRService) ReassignReviewer(
 	}
 
 	if len(candidates) == zeroLength {
-		return nil, emptyString, errors.New("NO_CANDIDATE")
+		return nil, emptyString, entity.ErrNoCandidate
 	}
 
 	//nolint:gosec // math/rand is sufficient for selecting a random reviewer

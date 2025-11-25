@@ -45,7 +45,7 @@ func (s *UserService) ChangeStatus(ctx context.Context,
 
 	user, e := s.repo.GetUser(queryCtx, userID)
 	if e != nil {
-		return nil, errors.New("NOT_FOUND")
+		return nil, entity.ErrNotFound
 	}
 
 	if !isActive && user.IsActive {
@@ -92,7 +92,7 @@ func (s *UserService) ChangeStatus(ctx context.Context,
 
 	user, err = s.repo.GetUser(queryCtx, userID)
 	if err != nil {
-		return nil, errors.New("NOT_FOUND")
+		return nil, entity.ErrNotFound
 	}
 
 	return user, nil
@@ -107,8 +107,7 @@ func (s *UserService) GetPRsAssignedTo(
 
 	_, err := s.repo.GetUser(queryCtx, userID)
 	if err != nil {
-		const notFoundErr = "NOT_FOUND"
-		return "", nil, errors.New(notFoundErr)
+		return "", nil, entity.ErrNotFound
 	}
 
 	prs, err := s.repo.GetPRsForReviewer(queryCtx, userID)
@@ -125,11 +124,11 @@ func (s *UserService) MassDeactivate(ctx context.Context,
 	flag bool) error {
 
 	if flag {
-		return errors.New("ONLY_DEACTIVATE")
+		return entity.ErrOnlyDeactivate
 	}
 
 	if len(users) == Empty {
-		return errors.New("EMPTY_REQUEST")
+		return entity.ErrEmptyRequest
 	}
 
 	team := users[Empty].TeamName
@@ -139,7 +138,7 @@ func (s *UserService) MassDeactivate(ctx context.Context,
 	if team == "" {
 		u, err := s.repo.GetUser(queryCtx, users[0].UserID)
 		if err != nil {
-			return errors.New(string(entity.CodeNotFound))
+			return entity.ErrNotFound
 		}
 		team = u.TeamName
 	}
@@ -152,15 +151,15 @@ func (s *UserService) MassDeactivate(ctx context.Context,
 
 		if u.TeamName != "" {
 			if u.TeamName != team {
-				return errors.New(string(entity.CodeUsersFromDifferentTeams))
+				return entity.ErrUsersFromDifferentTeams
 			}
 		} else {
 			uu, err := s.repo.GetUser(queryCtx, u.UserID)
 			if err != nil {
-				return errors.New(string(entity.CodeNotFound))
+				return entity.ErrNotFound
 			}
 			if uu.TeamName != team {
-				return errors.New(string(entity.CodeUsersFromDifferentTeams))
+				return entity.ErrUsersFromDifferentTeams
 			}
 		}
 

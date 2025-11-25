@@ -3,7 +3,6 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,7 +26,9 @@ func TestServices_UserMassDeactivateHandler(t *testing.T) {
 				{UserID: "u2", Username: "Bob", TeamName: "backend",
 					IsActive: false}}, false).Return(nil)
 
-		services := &handlers.Services{UserService: userService}
+		services := &handlers.Services{
+			Log:         newTestLogger(),
+			UserService: userService}
 
 		reqBody := map[string]interface{}{
 			"users": []map[string]interface{}{
@@ -57,7 +58,9 @@ func TestServices_UserMassDeactivateHandler(t *testing.T) {
 
 	t.Run("invalid json returns bad request", func(t *testing.T) {
 		userService := new(MockUserService)
-		services := &handlers.Services{UserService: userService}
+		services := &handlers.Services{
+			Log:         newTestLogger(),
+			UserService: userService}
 
 		req := httptest.NewRequest(http.MethodPost, "/users/deactivate", bytes.NewBuffer([]byte("invalid json")))
 		w := httptest.NewRecorder()
@@ -69,7 +72,9 @@ func TestServices_UserMassDeactivateHandler(t *testing.T) {
 
 	t.Run("flag true returns bad request", func(t *testing.T) {
 		userService := new(MockUserService)
-		services := &handlers.Services{UserService: userService}
+		services := &handlers.Services{
+			Log:         newTestLogger(),
+			UserService: userService}
 
 		reqBody := map[string]interface{}{
 			"users": []map[string]interface{}{{
@@ -85,9 +90,11 @@ func TestServices_UserMassDeactivateHandler(t *testing.T) {
 
 	t.Run("service returns NOT_FOUND -> 404", func(t *testing.T) {
 		userService := new(MockUserService)
-		userService.On("MassDeactivate", mock.Anything, mock.Anything, false).Return(errors.New("NOT_FOUND"))
+		userService.On("MassDeactivate", mock.Anything, mock.Anything, false).Return(entity.ErrNotFound)
 
-		services := &handlers.Services{UserService: userService}
+		services := &handlers.Services{
+			Log:         newTestLogger(),
+			UserService: userService}
 
 		reqBody := map[string]interface{}{
 			"users": []map[string]interface{}{{
